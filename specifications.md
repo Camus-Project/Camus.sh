@@ -154,7 +154,15 @@ Each function SHOULD implement a single identifiable responsibility.
 
 Functions SHOULD be small enough to allow complete human review.
 
-The specification does not currently define size limits.
+Functions MUST NOT exceed 50 lines.
+
+Functions SHOULD NOT exceed 20 lines.
+
+### Line Length
+
+Lines MUST NOT exceed 120 characters.
+
+Lines SHOULD NOT exceed 80 characters.
 
 ---
 
