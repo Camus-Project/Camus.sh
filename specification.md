@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-Camus.sh defines a restricted shell scripting profile intended for human-reviewed and human-assumed software artifacts.
+Camus.sh defines a restricted shell scripting profile intended for human-reviewed and human-assumed software artifacts. The profile applies the Camus Method to shell scripts.
 
 The profile provides a uniform structure that enables:
 
@@ -14,28 +14,28 @@ The profile provides a uniform structure that enables:
 
 Camus.sh is intentionally more restrictive than the underlying shell languages it supports.
 
+Future versions may integrate the Method's Lexicon phase.
+
 ---
 
-## 2. Supported Shells
+## 2. Shell Compatibility
 
-A Camus.sh script MUST be executable by one of the following interpreters:
+Camus.sh is developed and tested with **Bash**.
 
-| Shell | Status |
-| ------- | ------- |
-| Bash | Supported |
-| Zsh | Supported |
-| Ksh | Supported |
-| Dash | Supported |
-| BusyBox ash | Supported |
+Scripts written under this profile SHOULD also be compatible with:
 
-The support status applies only when the script complies with the Camus.sh profile.
+- Zsh
+- Ksh
+- Dash
+- BusyBox ash
 
-The following shells are out of scope:
+Compatibility with these shells is expected but not continuously tested.
+Reports and feedback can be filed at the [issue tracker](https://github.com/Camus-Project/Camus.sh/issues).
 
-| Shell | Status |
-| ------- | ------- |
-| Fish | Not supported |
-| Nushell | Not supported |
+The following shells are NOT compatible:
+
+- Fish
+- Nushell
 
 ---
 
