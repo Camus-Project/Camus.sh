@@ -116,15 +116,24 @@ No executable statements may appear after this invocation.
 
 ---
 
-## 7. Comments
+## 7. Camus Blocks
 
-Comments MUST use the shell comment syntax:
+Camus.sh uses delimiter-marked blocks for structured metadata.
 
-```sh
-# comment
-```
+A Camus block opens with a line starting with `## CAMUS-` and
+closes with `## CAMUS-END`. These lines are reserved markers —
+they are not ordinary comments and MUST NOT be used outside a
+Camus block definition.
 
-Block comment syntaxes are not supported.
+Content inside a block uses shell comments (`# key: value`).
+
+Three block types are defined:
+
+| Block | Placement | Purpose |
+|---|---|---|
+| `## CAMUS-LEXICON` | File header (after shebang) | Declares project terms |
+| `## CAMUS-SL` | Before a function definition | Declares intent, inputs, outputs |
+| `## CAMUS-SIGNATURE` | After a function body | Cryptographic attestation |
 
 ---
 
@@ -144,7 +153,7 @@ greet() {
 }
 ```
 
-Future Camus specifications may define a structured documentation format.
+The structured equivalent for tooling is the `## CAMUS-SL` block (see §7).
 
 ---
 
@@ -178,6 +187,58 @@ Future specifications may define:
 - reviewer identities.
 
 These mechanisms are outside the scope of this document.
+
+---
+
+## 11. Block Reference
+
+### 11.1 CAMUS-LEXICON
+
+Placed at the top of a script (after shebang) to declare project terms.
+If the script belongs to a larger project with a LEXICON.md, this block
+MAY be omitted.
+
+```sh
+## CAMUS-LEXICON
+# <term>: <definition>
+## CAMUS-END
+```
+
+### 11.2 CAMUS-SL
+
+Placed immediately before a function definition.
+Keys MUST be in lowercase. Keys SHOULD be omitted if they carry
+no information. Sub-entries are indented (tooling MUST preserve
+indentation).
+
+```sh
+## CAMUS-SL
+# intent: <what this function does>
+# input:
+#   $<n>: <description>
+# output:
+#   <description>
+## CAMUS-END
+name() {
+    ...
+}
+```
+
+### 11.3 CAMUS-SIGNATURE
+
+Placed immediately after the closing } of a function.
+Only the human operator appends this block via sign.sh.
+Keys MUST be in lowercase.
+
+```sh
+## CAMUS-SIGNATURE
+# signatory: <identifier>
+# date: <iso 8601>
+# fingerprint: sha256:<hex>
+# signature: <base64>
+## CAMUS-END
+```
+
 
 ---
 
