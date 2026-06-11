@@ -7,9 +7,9 @@
 ## CAMUS-SL
 # intent: print "Hello" followed by message on the screen (standard output)
 # input:
-#   arguments: message (optional, default: world)
+#   $1: message (optional, default: world)
 # output:
-#  print: Hello message
+#   print: Hello message
 ## CAMUS-END
 main() {
     local message="${1:-world}"
