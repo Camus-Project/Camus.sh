@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-Camus.sh defines a restricted shell scripting profile intended for human-reviewed and human-assumed software artifacts — typically but not exclusively produced by AI. The profile applies the Camus Method to shell scripts.
+Camus.sh defines a restricted shell scripting profile intended for human-reviewed and human-assumed software artifacts — typically produced by AI and, eventually by humans. The profile applies the Camus Method to shell scripts.
 
 A SKILL.md is provided for AI agents that wish to follow the Camus Method and the Camus.sh profile in the shell context. When loaded, the skill guides the agent through the Lexicon, Grammar, and Certification phases defined by the Method.
 
@@ -186,15 +186,15 @@ Keys MUST be in lowercase.
 
 ---
 
-## 8. Function Responsibility
+## 8. Size Limits
 
-Each function SHOULD implement a single identifiable responsibility.
+### 8.1.1 Functions
 
 Functions MUST NOT exceed 50 lines.
 
 Functions SHOULD NOT exceed 20 lines.
 
-### Line Length
+### 8.1.2 Line Length
 
 Lines MUST NOT exceed 120 characters.
 
@@ -243,6 +243,8 @@ its first prototype — will automate compliance checking against these rules.
 ## 11. Design Rationale
 
 Camus.sh treats functions as units of human responsibility.
+
+Each function SHOULD implement a single identifiable responsibility.
 
 A reviewer is expected to understand, verify, and assume individual functions rather than arbitrary fragments of source code.
 
