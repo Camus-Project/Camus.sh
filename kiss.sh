@@ -58,6 +58,7 @@ kiss_dir() {
 prompt_password() {
     local prompt="${1:-Enter password: }"
     if [ -n "${PASSWORD:-}" ]; then
+        echo "Warning: PASSWORD env var used — testing mode only." >&2
         echo "$PASSWORD"
         return
     fi

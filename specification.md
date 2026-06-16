@@ -193,11 +193,16 @@ print_banner() {
 
 Placed immediately after the closing `}` of a function.
 
-**Only a human MAY append or authorize a signature block.**  
+**Only a human MAY append or authorize a signature block.**
 Automated or AI-generated signatures are invalid. An AI may, with
 explicit human authorization, generate a temporary signature for
 testing purposes during development, but that signature MUST be
 removed before the artifact is delivered.
+
+**The signing private key MUST be protected by a password.**
+A passwordless key enables automated signing without human
+involvement and is therefore invalid for production use.
+A passwordless key MAY be used temporarily for local testing.
 
 Keys MUST be in lowercase.
 
@@ -236,6 +241,11 @@ Camus.sh v1 defines functions as the primary review and attestation unit.
 responsibility for a function's correctness. An automated or
 AI-generated signature carries no such responsibility and is
 therefore invalid by definition.
+
+**The signing private key MUST be password-protected.** A
+passwordless private key enables unsupervised signing and
+defeats the human accountability that signatures are meant to
+provide. Passwordless keys are valid for local testing only.
 
 This specification defines the structure of signature blocks
 (see §7.3). Automated verification and key management are

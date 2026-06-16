@@ -127,6 +127,9 @@ any automated tool may generate a final signature.
 - An AI MAY, with explicit human authorization, generate a
   temporary signature for testing during development, but that
   signature MUST be removed before delivery.
+- **The private key MUST be password-protected.** A passwordless
+  key enables signing without human involvement and is invalid
+  for production use. Passwordless keys are for local testing only.
 
 ### Workflow
 
@@ -206,6 +209,7 @@ main "$@"
 - [ ] Variables use `local` where possible
 - [ ] Exceptions documented
 - [ ] **No AI-generated `CAMUS-SIGNATURE` blocks** — only human signatures
+- [ ] **Private key password-protected** — no passwordless keys in production
 
 ---
 
