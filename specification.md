@@ -153,20 +153,39 @@ MAY be omitted.
 ### 7.2 CAMUS-SL
 
 Placed immediately before a function definition.
-Keys MUST be in lowercase. Keys SHOULD be omitted if they carry
-no information. Sub-entries are indented (tooling MUST preserve
+Keys MUST be in lowercase. Sub-entries are indented (tooling MUST preserve
 indentation).
+
+The following keys are defined:
+
+- `intent:` — REQUIRED. Describes what the function does.
+- `input:` — OPTIONAL. Present only if the function takes inputs.
+- `output:` — OPTIONAL. Present only if the function produces output.
+
+Example with inputs and outputs:
 
 ```sh
 ## CAMUS-SL
-# intent: <what this function does>
+# intent: compute the sum of two numbers
 # input:
-#   $<n>: <description>
+#   $1: augend (integer)
+#   $2: addend (integer)
 # output:
-#   <description>
+#   stdout: sum of augend and addend
 ## CAMUS-END
-name() {
-    ...
+add() {
+    echo $(($1 + $2))
+}
+```
+
+Example with no inputs or outputs:
+
+```sh
+## CAMUS-SL
+# intent: print the application banner to stdout
+## CAMUS-END
+print_banner() {
+    echo "=== My App v1.0 ==="
 }
 ```
 
