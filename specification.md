@@ -192,7 +192,13 @@ print_banner() {
 ### 7.3 CAMUS-SIGNATURE
 
 Placed immediately after the closing `}` of a function.
-Only the human operator appends this block via the signing tool.
+
+**Only a human MAY append or authorize a signature block.**  
+Automated or AI-generated signatures are invalid. An AI may, with
+explicit human authorization, generate a temporary signature for
+testing purposes during development, but that signature MUST be
+removed before the artifact is delivered.
+
 Keys MUST be in lowercase.
 
 ```sh
@@ -225,6 +231,11 @@ Lines SHOULD NOT exceed 80 characters.
 ## 9. Signature Scope
 
 Camus.sh v1 defines functions as the primary review and attestation unit.
+
+**Only a human may sign.** Signing is the act of assuming
+responsibility for a function's correctness. An automated or
+AI-generated signature carries no such responsibility and is
+therefore invalid by definition.
 
 This specification defines the structure of signature blocks
 (see §7.3). Automated verification and key management are

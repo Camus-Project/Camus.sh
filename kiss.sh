@@ -39,13 +39,6 @@ Verify options:
 EOF
     exit 1
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: get the directory where the script resides
 # output:
@@ -55,13 +48,6 @@ kiss_dir() {
     cd "$(dirname "$0")" || exit
     pwd -P
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: prompt the user for a password (hidden input)
 # input:
@@ -84,13 +70,6 @@ prompt_password() {
     fi
     echo "$password"
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: prompt the user for a password twice to confirm
 # input:
@@ -109,13 +88,6 @@ prompt_password_twice() {
     fi
     echo "$p1"
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: compute the SHA256 fingerprint of a certificate or public key
 # input:
@@ -131,13 +103,6 @@ fingerprint_of() {
         openssl pkey -in "$key" -pubin -outform DER 2>/dev/null | openssl dgst -sha256 | cut -d' ' -f2
     fi
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: normalize a fingerprint string for use as a filename
 # input:
@@ -148,13 +113,6 @@ fingerprint_of() {
 fingerprint_filepath() {
     echo "$1" | tr -d ' :'
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: find a public key file by its fingerprint
 # input:
@@ -180,13 +138,6 @@ find_key_by_fingerprint() {
     fi
     return 1
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: check certificate expiration status at a given date
 # input:
@@ -210,13 +161,6 @@ cert_valid_at() {
     fi
     return 1
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: extract remaining validity days of a certificate
 # input:
@@ -235,13 +179,6 @@ key_expiry_info() {
     echo "$remaining"
     [ "$remaining" -ge 0 ]
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: extract raw public key from an X.509 certificate
 # input:
@@ -252,13 +189,6 @@ key_expiry_info() {
 extract_pubkey_from_cert() {
     openssl x509 -in "$1" -noout -pubkey 2>/dev/null
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: detect file type for signing mode
 # input:
@@ -275,13 +205,6 @@ detect_file_type() {
         *) echo "unknown" ;;
     esac
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: check if a file already has a camus-sig-1 marker
 # input:
@@ -293,13 +216,6 @@ is_signed() {
     local file="$1"
     grep -qs '^\*camus-sig-1\*$' "$file"
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## --- Subcommand: list-keys ---
 
 ## CAMUS-SL
@@ -327,13 +243,6 @@ do_list_keys() {
         echo "No keys found in ${key_dir}." >&2
     fi
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## --- Subcommand: init ---
 
 ## CAMUS-SL
@@ -383,13 +292,6 @@ do_gen_key() {
     echo "Private key: ${named_key}" >&2
     echo "Public cert: ${named_cert}" >&2
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## --- Subcommand: check ---
 
 ## CAMUS-SL
@@ -662,13 +564,6 @@ do_check() {
         return 0
     fi
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## --- Subcommand: sign ---
 
 ## CAMUS-SL
@@ -702,13 +597,6 @@ compute_signature() {
     rm -f "$tmp_content" "$tmp_sig"
     echo "$sig_b64"
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: generate a whole-file signature block for text or markdown files
 # input:
@@ -738,13 +626,6 @@ format_whole_signature() {
         echo "</pre>"
     fi
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: sign an entire file as a single unit (for .txt and .md)
 # input:
@@ -774,13 +655,6 @@ do_sign_whole_file() {
 
     echo "Signed (whole-file): ${file}" >&2
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: generate a CAMUS-SIGNATURE block for a shell function
 # input:
@@ -801,13 +675,6 @@ format_func_signature_block() {
     echo "# signature: ${sig_b64}"
     echo "## CAMUS-END"
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: find the CAMUS-SL block preceding a function definition
 # input:
@@ -840,13 +707,6 @@ find_sl_block() {
     fi
     sed -n "${sl_line},${end_line}p" "$file"
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: get the body of a function (from definition to closing brace)
 # input:
@@ -912,13 +772,6 @@ get_function_body() {
     printf '%s' "$content"
     echo "END_LINE:${line_num}"
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: sign each unsigned function in a shell script
 # input:
@@ -1075,13 +928,6 @@ do_sign_per_function() {
     mv "$temp_file" "$file"
     echo "Signed ${current_func_idx} function(s) in ${file}" >&2
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## --- Subcommand: verify ---
 
 ## CAMUS-SL
@@ -1180,13 +1026,6 @@ do_verify_whole_file() {
         return 1
     fi
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: verify a single CAMUS-SIGNATURE block for a specific function
 # input:
@@ -1318,13 +1157,6 @@ verify_func_signature() {
         return 1
     fi
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: verify all signatures in a Camus.sh script (per-function and whole-file)
 # input:
@@ -1377,13 +1209,6 @@ do_verify() {
     echo "Result: ${valid} valid, ${invalid} invalid out of ${total} signature(s)"
     [ "$invalid" -eq 0 ]
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## --- Subcommand: sign (dispatcher) ---
 
 ## CAMUS-SL
@@ -1431,13 +1256,6 @@ do_sign_file() {
             ;;
     esac
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## CAMUS-SL
 # intent: review and sign multiple files interactively
 # input:
@@ -1515,13 +1333,6 @@ do_sign_files() {
         echo "Key expires in ${key_remaining} day(s)."
     fi
 }
-## CAMUS-SIGNATURE
-# signatory: camus-team
-# date: 2026-06-16T00:00:00Z
-# fingerprint: sha256:placeholder
-# signature: placeholder
-## CAMUS-END
-
 ## --- Main ---
 
 ## CAMUS-SL

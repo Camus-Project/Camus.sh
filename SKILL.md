@@ -117,13 +117,25 @@ For each function, verify:
 
 ## Phase 3: Certification
 
-Certification is the human responsibility. When the script passes
-Grammar review:
+Certification is **exclusively human**. Neither the AI agent nor
+any automated tool may generate a final signature.
+
+### Human-Only Rule
+
+- **Only a human MAY sign.** Signing = assuming responsibility.
+- AI-generated signatures are **invalid by definition**.
+- An AI MAY, with explicit human authorization, generate a
+  temporary signature for testing during development, but that
+  signature MUST be removed before delivery.
+
+### Workflow
+
+When the script passes Grammar review:
 
 1. **Format** — Ensure UTF-8, LF endings, consistent indentation
-2. **Review** — Use the checklist above
+2. **Review** — Use the checklist below
 3. **Sign** — The human appends a `## CAMUS-SIGNATURE` block after
-   each function using `sign.sh` (or `kiss.sh sign` in the future)
+   each function using `kiss.sh sign` (or `sign.sh`)
 
 ### The Signature Block
 
@@ -193,6 +205,7 @@ main "$@"
 - [ ] No line exceeds 120 characters
 - [ ] Variables use `local` where possible
 - [ ] Exceptions documented
+- [ ] **No AI-generated `CAMUS-SIGNATURE` blocks** — only human signatures
 
 ---
 
