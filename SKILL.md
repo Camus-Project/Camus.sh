@@ -74,7 +74,7 @@ rules, derived from the specification.
    `## CAMUS-` / `## CAMUS-END` delimiters.
 
 5. **CAMUS-SL** — Every function MUST be preceded by a
-   `## CAMUS-SL` block declaring required `intent:`, and optionnal`input:`, and `output:`.
+   `## CAMUS-SL` block declaring required `intent:`, and optional`input:`, and `output:`.
    Keys MUST be in lowercase.
 
 6. **Size Limits** — Functions MUST NOT exceed 50 lines
