@@ -7,7 +7,8 @@
 # camus-block: a metadata block delimited by ## CAMUS- and ## CAMUS-END
 # compliance-check: validation of a script against the Camus.sh specification
 # whole-file-signature: signature covering an entire non-shell file (.txt, .md)
-# per-function-signature: signature covering a single function + its CAMUS-SL block
+# per-function-signature: signature covering a single function
+#   plus its CAMUS-SL block
 ## CAMUS-END
 
 ## CAMUS-SL
@@ -20,25 +21,26 @@ usage() {
 Usage: $(basename "$0") <command> [options] [<file>...]
 
 Commands:
-  init       [--key-dir <path>]    Generate Ed25519 key pair
-  check      <file>                Check script compliance with Camus.sh
-  sign       [options] <file>...   Sign file(s)
-  verify     [options] <file>      Verify signature(s)
-  list-keys  [--key-dir <path>]    List available public keys
+  init       [--key-dir <path>] [--days <n>] Generate Ed25519 key pair
+  check      <file>                           Check script compliance
+  sign       [options] <file>...              Sign file(s)
+  verify     [options] <file>                 Verify signature(s)
+  list-keys  [--key-dir <path>]               List available public keys
 
 Sign options:
-  --txt, --text            Force whole-file text mode (--- separator)
-  --md, --markdown         Force whole-file markdown mode (--- + <pre>)
-  --pubkey <path>          Use specific public key for verification
-
-Init options:
-  --key-dir <path>         Key storage directory (default: .secrets/)
+  --txt, --text       Force whole-file text mode (--- separator)
+  --md, --markdown    Force whole-file markdown mode (--- + <pre>)
+  --pubkey <path>     Use specific public key for verification
+  --key-dir <path>    Key storage directory (default: .secrets/)
+  --signatory <name>  Signatory name (optional, prompts if absent)
 
 Verify options:
-  --pubkey <path>          Use specific public key for verification
+  --pubkey <path>     Use specific public key
+  --key-dir <path>    Key storage directory (default: .secrets/)
 EOF
     exit 1
 }
+
 ## CAMUS-SL
 # intent: get the directory where the script resides
 # output:
@@ -48,6 +50,7 @@ kiss_dir() {
     cd "$(dirname "$0")" || exit
     pwd -P
 }
+
 ## CAMUS-SL
 # intent: prompt the user for a password (hidden input)
 # input:
@@ -58,7 +61,7 @@ kiss_dir() {
 prompt_password() {
     local prompt="${1:-Enter password: }"
     if [ -n "${PASSWORD:-}" ]; then
-        echo "Warning: PASSWORD env var used — testing mode only." >&2
+        echo "Warning: PASSWORD env var used -- testing mode only." >&2
         echo "$PASSWORD"
         return
     fi
@@ -71,6 +74,7 @@ prompt_password() {
     fi
     echo "$password"
 }
+
 ## CAMUS-SL
 # intent: prompt the user for a password twice to confirm
 # input:
@@ -89,6 +93,7 @@ prompt_password_twice() {
     fi
     echo "$p1"
 }
+
 ## CAMUS-SL
 # intent: compute the SHA256 fingerprint of a certificate or public key
 # input:
@@ -99,11 +104,14 @@ prompt_password_twice() {
 fingerprint_of() {
     local key="$1"
     if head -1 "$key" 2>/dev/null | grep -q 'BEGIN CERTIFICATE'; then
-        openssl x509 -in "$key" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2
+        openssl x509 -in "$key" -noout -fingerprint -sha256 2>/dev/null \
+            | cut -d= -f2
     else
-        openssl pkey -in "$key" -pubin -outform DER 2>/dev/null | openssl dgst -sha256 | cut -d' ' -f2
+        openssl pkey -in "$key" -pubin -outform DER 2>/dev/null \
+            | openssl dgst -sha256 | cut -d' ' -f2
     fi
 }
+
 ## CAMUS-SL
 # intent: normalize a fingerprint string for use as a filename
 # input:
@@ -114,6 +122,7 @@ fingerprint_of() {
 fingerprint_filepath() {
     echo "$1" | tr -d ' :'
 }
+
 ## CAMUS-SL
 # intent: find a public key file by its fingerprint
 # input:
@@ -139,6 +148,7 @@ find_key_by_fingerprint() {
     fi
     return 1
 }
+
 ## CAMUS-SL
 # intent: check certificate expiration status at a given date
 # input:
@@ -150,7 +160,8 @@ find_key_by_fingerprint() {
 cert_valid_at() {
     local pubkey="$1" sig_date="$2"
     local cert_end
-    cert_end=$(openssl x509 -in "$pubkey" -noout -enddate 2>/dev/null | cut -d= -f2)
+    cert_end=$(openssl x509 -in "$pubkey" -noout -enddate 2>/dev/null \
+        | cut -d= -f2)
     if [ -z "$cert_end" ]; then
         return 0
     fi
@@ -162,6 +173,7 @@ cert_valid_at() {
     fi
     return 1
 }
+
 ## CAMUS-SL
 # intent: extract remaining validity days of a certificate
 # input:
@@ -172,7 +184,8 @@ cert_valid_at() {
 key_expiry_info() {
     local cert="$1"
     local end_date
-    end_date=$(openssl x509 -in "$cert" -noout -enddate 2>/dev/null | cut -d= -f2) || { echo ""; return 1; }
+    end_date=$(openssl x509 -in "$cert" -noout -enddate 2>/dev/null \
+        | cut -d= -f2) || { echo ""; return 1; }
     local end_epoch now_epoch
     end_epoch=$(date -d "$end_date" +%s 2>/dev/null) || { echo ""; return 1; }
     now_epoch=$(date +%s)
@@ -180,6 +193,7 @@ key_expiry_info() {
     echo "$remaining"
     [ "$remaining" -ge 0 ]
 }
+
 ## CAMUS-SL
 # intent: extract raw public key from an X.509 certificate
 # input:
@@ -190,6 +204,7 @@ key_expiry_info() {
 extract_pubkey_from_cert() {
     openssl x509 -in "$1" -noout -pubkey 2>/dev/null
 }
+
 ## CAMUS-SL
 # intent: detect file type for signing mode
 # input:
@@ -206,6 +221,7 @@ detect_file_type() {
         *) echo "unknown" ;;
     esac
 }
+
 ## CAMUS-SL
 # intent: check if a file already has a camus-sig-1 marker
 # input:
@@ -217,6 +233,339 @@ is_signed() {
     local file="$1"
     grep -qs '^\*camus-sig-1\*$' "$file"
 }
+
+## --- Check helpers ---
+
+## CAMUS-SL
+# intent: check that a script has a shebang line
+# input:
+#   $1: file path
+# output:
+#   stdout: check result
+#   return: 0 if OK, 2 if error
+## CAMUS-END
+check_shebang() {
+    if head -1 "$1" | grep -q '^#!' 2>/dev/null; then
+        echo "  [OK] Shebang present"
+        return 0
+    else
+        echo "  [ERROR] No shebang found (MUST start with #!)"
+        return 2
+    fi
+}
+
+## CAMUS-SL
+# intent: check that a script has a CAMUS-LEXICON block
+# input:
+#   $1: file path
+# output:
+#   stdout: check result
+#   return: 0 if OK, 1 if warning
+## CAMUS-END
+check_lexicon_block() {
+    if grep -qs '^## CAMUS-LEXICON$' "$1"; then
+        echo "  [OK] CAMUS-LEXICON block present"
+        return 0
+    else
+        echo "  [WARN] No CAMUS-LEXICON block (SHOULD define project terms)"
+        return 1
+    fi
+}
+
+## CAMUS-SL
+# intent: check that no 'function' keyword is used
+# input:
+#   $1: file path
+# output:
+#   stdout: check result
+#   return: 0 if OK, 2 if error
+## CAMUS-END
+check_no_function_keyword() {
+    if grep -qs '^function ' "$1"; then
+        echo "  [ERROR] 'function' keyword used (MUST use name() {} syntax)"
+        return 2
+    else
+        echo "  [OK] No 'function' keyword"
+        return 0
+    fi
+}
+
+## CAMUS-SL
+# intent: check that main() is defined
+# input:
+#   $1: file path
+# output:
+#   stdout: check result
+#   return: 0 if OK, 2 if error
+## CAMUS-END
+check_main_defined() {
+    if grep -qs '^main()' "$1" || grep -qs '^main ()' "$1"; then
+        echo "  [OK] main() defined"
+        return 0
+    else
+        echo "  [ERROR] main() not defined (MUST have a main function)"
+        return 2
+    fi
+}
+
+## CAMUS-SL
+# intent: check that the script ends with main "$@"
+# input:
+#   $1: file path
+# output:
+#   stdout: check result
+#   return: 0 if OK, 2 if error
+## CAMUS-END
+check_main_call() {
+    if tail -1 "$1" | grep -q '^main "\$@"$' 2>/dev/null; then
+        echo "  [OK] Script ends with main \"\$@\""
+        return 0
+    elif grep -q '^main "\$@"$' "$1"; then
+        echo "  [OK] main \"\$@\" present (though not on last line)"
+        return 0
+    else
+        echo "  [ERROR] main \"\$@\" not found (MUST invoke main at end)"
+        return 2
+    fi
+}
+
+## CAMUS-SL
+# intent: check for top-level executable code before first function
+# input:
+#   $1: file path
+# output:
+#   stdout: check result
+#   return: 0 if OK, 2 if error
+## CAMUS-END
+check_top_level_code() {
+    local first_func_line
+    first_func_line=$(grep -n '^[a-zA-Z_][a-zA-Z0-9_]*() {' "$1" 2>/dev/null \
+        | head -1 | cut -d: -f1 || true)
+    if [ -n "$first_func_line" ] && [ "$first_func_line" -gt 2 ]; then
+        local suspect
+        suspect=$(sed -n "2,$((first_func_line - 1))p" "$1" 2>/dev/null \
+            | grep -v '^#' | grep -v '^$' \
+            | grep -v '^## CAMUS-' | grep -v '^## CAMUS-END$' || true)
+        if [ -n "$suspect" ]; then
+            echo "  [ERROR] Top-level executable code found before first function"
+            return 2
+        fi
+    fi
+    echo "  [OK] No top-level executable code"
+    return 0
+}
+
+## CAMUS-SL
+# intent: check that all functions are preceded by CAMUS-SL blocks
+# input:
+#   $1: file path
+# output:
+#   stdout: check result
+#   return: 0 if OK, 2 if error
+## CAMUS-END
+check_sl_blocks_present() {
+    local func_lines
+    func_lines=$(grep -n '^[a-zA-Z_][a-zA-Z0-9_]*() {' "$1" 2>/dev/null || true)
+    if [ -z "$func_lines" ]; then
+        echo "  [OK] All functions preceded by CAMUS-SL blocks"
+        return 0
+    fi
+    local missing_sl=0
+    while IFS=: read -r line_num _; do
+        if [ "$line_num" -le 2 ]; then continue; fi
+        local prev_line=$((line_num - 1))
+        local block_start
+        block_start=$(sed -n '1,'"$prev_line"'p' "$1" \
+            | tac | grep -n '^## CAMUS-SL$' -m1 \
+            | head -1 | cut -d: -f1 || true)
+        if [ -z "$block_start" ]; then
+            echo "  [ERROR] Function at line ${line_num} has no preceding CAMUS-SL block"
+            missing_sl=$((missing_sl + 1))
+        fi
+    done <<< "$func_lines"
+    if [ "$missing_sl" -eq 0 ]; then
+        echo "  [OK] All functions preceded by CAMUS-SL blocks"
+        return 0
+    fi
+    return 2
+}
+
+## CAMUS-SL
+# intent: check that all CAMUS-SL blocks contain an intent: declaration
+# input:
+#   $1: file path
+# output:
+#   stdout: check result
+#   return: 0 if OK, 2 if error
+## CAMUS-END
+check_sl_intent() {
+    local sl_blocks
+    sl_blocks=$(grep -n '^## CAMUS-SL$' "$1" 2>/dev/null || true)
+    if [ -z "$sl_blocks" ]; then
+        echo "  [OK] All CAMUS-SL blocks declare intent:"
+        return 0
+    fi
+    local missing_intent=0
+    while IFS=: read -r line_num _; do
+        local end_line
+        end_line=$(sed -n "$line_num,\$p" "$1" | grep -n '^## CAMUS-END$' \
+            | head -1 | cut -d: -f1)
+        if [ -z "$end_line" ]; then continue; fi
+        end_line=$((line_num + end_line - 1))
+        local block_content
+        block_content=$(sed -n "$((line_num + 1)),$((end_line - 1))p" "$1" 2>/dev/null)
+        if ! echo "$block_content" | grep -qs '# intent:'; then
+            echo "  [ERROR] CAMUS-SL block at line ${line_num} missing 'intent:'"
+            missing_intent=$((missing_intent + 1))
+        fi
+    done <<< "$sl_blocks"
+    if [ "$missing_intent" -eq 0 ]; then
+        echo "  [OK] All CAMUS-SL blocks declare intent:"
+        return 0
+    fi
+    return 2
+}
+
+## CAMUS-SL
+# intent: check that all Camus blocks are properly closed
+# input:
+#   $1: file path
+# output:
+#   stdout: check result
+#   return: 0 if OK, 2 if error
+## CAMUS-END
+check_blocks_closed() {
+    local total_end total_camus open_blocks
+    total_end=$(grep -c '^## CAMUS-END$' "$1" 2>/dev/null || true)
+    total_camus=$(grep -c '^## CAMUS-' "$1" 2>/dev/null || true)
+    open_blocks=$((total_camus - total_end))
+    if [ "$open_blocks" -eq "$total_end" ]; then
+        echo "  [OK] All Camus blocks properly closed"
+        return 0
+    else
+        echo "  [ERROR] ${open_blocks} opening markers but ${total_end} closing markers"
+        return 2
+    fi
+}
+
+## CAMUS-SL
+# intent: scan a file and output "name:line_count" for each function
+# input:
+#   $1: file path
+# output:
+#   stdout: "name:line_count" lines
+## CAMUS-END
+scan_func_lengths() {
+    local file="$1"
+    local line_num=0 brace_depth=0 func_name="" func_start=0
+
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+        local func_pat='^[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*\([[:space:]]*\)[[:space:]]*'
+        if [[ "$line" =~ ${func_pat}\{ ]] || [[ "$line" =~ ${func_pat}$ ]]; then
+            if [ -n "$func_name" ]; then
+                echo "${func_name}:$((line_num - 1 - func_start + 1))"
+            fi
+            func_name=$(echo "$line" | sed 's/(.*//' | tr -d ' ')
+            func_start=$line_num
+            brace_depth=0
+            local open_br=$(echo "$line" | tr -cd '{' | wc -c)
+            local close_br=$(echo "$line" | tr -cd '}' | wc -c)
+            brace_depth=$((brace_depth + open_br - close_br))
+        elif [ -n "$func_name" ]; then
+            brace_depth=$((brace_depth + $(echo "$line" | tr -cd '{' | wc -c)))
+            brace_depth=$((brace_depth - $(echo "$line" | tr -cd '}' | wc -c)))
+            if [ "$brace_depth" -le 0 ]; then
+                echo "${func_name}:$((line_num - func_start + 1))"
+                func_name=""
+            fi
+        fi
+    done < "$file"
+
+    if [ -n "$func_name" ]; then
+        echo "${func_name}:${line_num}"
+    fi
+}
+
+## CAMUS-SL
+# intent: check that no function exceeds 50 lines (warn above 20)
+# input:
+#   $1: file path
+# output:
+#   stdout: check result per oversized function
+#   return: 0 if OK, 1 if warnings, 2 if errors
+## CAMUS-END
+check_function_lengths() {
+    local file="$1"
+    local errors=0 warnings=0
+    local results
+    results=$(scan_func_lengths "$file")
+    if [ -z "$results" ]; then return 0; fi
+
+    while IFS= read -r result; do
+        local func_name="${result%%:*}"
+        local func_count="${result##*:}"
+        report_func_length "$func_name" "$func_count"
+        local rc=$?
+        [ "$rc" -eq 2 ] && errors=$((errors + 1))
+        [ "$rc" -eq 1 ] && warnings=$((warnings + 1))
+    done <<< "$results"
+
+    [ "$errors" -gt 0 ] && return 2
+    [ "$warnings" -gt 0 ] && return 1
+    return 0
+}
+
+## CAMUS-SL
+# intent: report a single function's line count against size limits
+# input:
+#   $1: function name
+#   $2: line count
+# output:
+#   stdout: warning or error message if over limit
+#   return: 0 if OK, 1 if warning, 2 if error
+## CAMUS-END
+report_func_length() {
+    local name="$1" count="$2"
+    if [ "$count" -gt 50 ]; then
+        echo "  [ERROR] Function '${name}' is ${count} lines (MUST <= 50)"
+        return 2
+    elif [ "$count" -gt 20 ]; then
+        echo "  [WARN] Function '${name}' is ${count} lines (SHOULD <= 20)"
+        return 1
+    fi
+    return 0
+}
+
+## CAMUS-SL
+# intent: check line lengths against limits (MUST <= 120, SHOULD <= 80)
+# input:
+#   $1: file path
+# output:
+#   stdout: check results
+#   return: 0 if OK, 1 if warnings
+## CAMUS-END
+check_line_lengths() {
+    local file="$1"
+    local long_lines=0 very_long_lines=0 line_num=0
+    while IFS= read -r line_content; do
+        line_num=$((line_num + 1))
+        local len=${#line_content}
+        if [ "$len" -gt 120 ]; then
+            very_long_lines=$((very_long_lines + 1))
+            echo "  [ERROR] Line ${line_num} is ${len} chars (MUST <= 120)"
+        elif [ "$len" -gt 80 ]; then
+            long_lines=$((long_lines + 1))
+        fi
+    done < "$file"
+    if [ "$very_long_lines" -gt 0 ]; then return 2; fi
+    if [ "$long_lines" -eq 0 ]; then
+        echo "  [OK] All lines under 80 characters"
+    fi
+    [ "$long_lines" -gt 0 ] && return 1
+    return 0
+}
+
 ## --- Subcommand: list-keys ---
 
 ## CAMUS-SL
@@ -233,7 +582,8 @@ do_list_keys() {
         local fpr expiry
         fpr=$(fingerprint_of "$f")
         if head -1 "$f" 2>/dev/null | grep -q 'BEGIN CERTIFICATE'; then
-            expiry=$(openssl x509 -in "$f" -noout -enddate 2>/dev/null | cut -d= -f2)
+            expiry=$(openssl x509 -in "$f" -noout -enddate 2>/dev/null \
+                | cut -d= -f2)
         else
             expiry="-"
         fi
@@ -244,7 +594,26 @@ do_list_keys() {
         echo "No keys found in ${key_dir}." >&2
     fi
 }
+
 ## --- Subcommand: init ---
+
+## CAMUS-SL
+# intent: generate an Ed25519 self-signed certificate
+# input:
+#   $1: output key path
+#   $2: output cert path
+#   $3: password
+#   $4: validity in days
+## CAMUS-END
+gen_cert() {
+    local key_out="$1" cert_out="$2" password="$3" days="$4"
+    openssl req -x509 -newkey ed25519 \
+        -keyout "$key_out" -out "$cert_out" \
+        -days "$days" \
+        -passout "pass:${password}" \
+        -subj "/CN=Camus.sh Key/O=Camus Project" \
+        2>/dev/null
+}
 
 ## CAMUS-SL
 # intent: generate an Ed25519 key pair with password-protected private key
@@ -255,7 +624,6 @@ do_list_keys() {
 do_gen_key() {
     local key_dir="$1"
     local days="${2:-365}"
-
     mkdir -p "$key_dir"
 
     local password
@@ -265,12 +633,7 @@ do_gen_key() {
     tmp_key=$(mktemp)
     tmp_cert=$(mktemp)
 
-    openssl req -x509 -newkey ed25519 \
-        -keyout "$tmp_key" -out "$tmp_cert" \
-        -days "$days" \
-        -passout "pass:${password}" \
-        -subj "/CN=Camus.sh Key/O=Camus Project" \
-        2>/dev/null
+    gen_cert "$tmp_key" "$tmp_cert" "$password" "$days"
 
     local fpr clean_fpr
     fpr=$(fingerprint_of "$tmp_cert")
@@ -286,13 +649,15 @@ do_gen_key() {
     ln -sf "public-${clean_fpr}.pem"  "${key_dir}/public.pem"
 
     local expiry
-    expiry=$(openssl x509 -in "$named_cert" -noout -enddate 2>/dev/null | cut -d= -f2)
+    expiry=$(openssl x509 -in "$named_cert" -noout -enddate 2>/dev/null \
+        | cut -d= -f2)
 
     echo "Key fingerprint: SHA256:${fpr}" >&2
     echo "Valid until: ${expiry}" >&2
     echo "Private key: ${named_key}" >&2
     echo "Public cert: ${named_cert}" >&2
 }
+
 ## --- Subcommand: check ---
 
 ## CAMUS-SL
@@ -305,8 +670,7 @@ do_gen_key() {
 ## CAMUS-END
 do_check() {
     local file="$1"
-    local errors=0
-    local warnings=0
+    local errors=0 warnings=0 rc
 
     if [ ! -f "$file" ]; then
         echo "Error: file not found: ${file}" >&2
@@ -316,239 +680,24 @@ do_check() {
     echo "Checking: ${file}"
     echo ""
 
-    # 1. Shebang
-    if head -1 "$file" | grep -q '^#!' 2>/dev/null; then
-        echo "  [OK] Shebang present"
-    else
-        echo "  [ERROR] No shebang found (MUST start with #!)"
-        errors=$((errors + 1))
-    fi
+    for check in check_shebang check_lexicon_block \
+        check_no_function_keyword check_main_defined check_main_call \
+        check_top_level_code check_sl_blocks_present check_sl_intent \
+        check_blocks_closed; do
+        $check "$file"
+        rc=$?
+        [ "$rc" -eq 2 ] && errors=$((errors + 1))
+    done
 
-    # 2. CAMUS-LEXICON (SHOULD)
-    if grep -qs '^## CAMUS-LEXICON$' "$file"; then
-        echo "  [OK] CAMUS-LEXICON block present"
-    else
-        echo "  [WARN] No CAMUS-LEXICON block (SHOULD define project terms)"
-        warnings=$((warnings + 1))
-    fi
+    check_function_lengths "$file"
+    rc=$?
+    [ "$rc" -eq 2 ] && errors=$((errors + 1))
+    [ "$rc" -eq 1 ] && warnings=$((warnings + 1))
 
-    # 3. No function keyword (MUST use name() {} syntax)
-    if grep -qs '^function ' "$file"; then
-        echo "  [ERROR] 'function' keyword used (MUST use name() {} syntax)"
-        errors=$((errors + 1))
-    else
-        echo "  [OK] No 'function' keyword"
-    fi
-
-    # 4. main() defined (MUST)
-    if grep -qs '^main()' "$file" || grep -qs '^main ()' "$file"; then
-        echo "  [OK] main() defined"
-    else
-        echo "  [ERROR] main() not defined (MUST have a main function)"
-        errors=$((errors + 1))
-    fi
-
-    # 5. main "$@" at end (MUST)
-    if tail -1 "$file" | grep -q '^main "\$@"$' 2>/dev/null; then
-        echo "  [OK] Script ends with main \"\$@\""
-    elif grep -q '^main "\$@"$' "$file"; then
-        echo "  [OK] main \"\$@\" present (though not on last line)"
-    else
-        echo "  [ERROR] main \"\$@\" not found (MUST invoke main at end)"
-        errors=$((errors + 1))
-    fi
-
-    # Check for top-level executable code before main()
-    # We find the line of the first function definition
-    local first_func_line
-    first_func_line=$(grep -n '^[a-zA-Z_][a-zA-Z0-9_]*() {' "$file" 2>/dev/null | head -1 | cut -d: -f1 || true)
-    if [ -n "$first_func_line" ] && [ "$first_func_line" -gt 2 ]; then
-        # Check lines between shebang (line 1) and first function
-        local suspect
-        suspect=$(sed -n "2,$((first_func_line - 1))p" "$file" 2>/dev/null \
-            | grep -v '^#' | grep -v '^$' \
-            | grep -v '^## CAMUS-' | grep -v '^## CAMUS-END$' || true)
-        if [ -n "$suspect" ]; then
-            echo "  [ERROR] Top-level executable code found before first function"
-            errors=$((errors + 1))
-        else
-            echo "  [OK] No top-level executable code"
-        fi
-    else
-        echo "  [OK] No top-level executable code"
-    fi
-
-    # 6. Functions preceded by CAMUS-SL
-    local func_lines
-    func_lines=$(grep -n '^[a-zA-Z_][a-zA-Z0-9_]*() {' "$file" 2>/dev/null || true)
-    if [ -n "$func_lines" ]; then
-        local missing_sl=0
-        while IFS=: read -r line_num line_content; do
-            if [ "$line_num" -le 2 ]; then
-                continue
-            fi
-            local prev_line=$((line_num - 1))
-            local block_start
-            block_start=$(sed -n '1,'"$prev_line"'p' "$file" \
-                | tac | grep -n '^## CAMUS-SL$' -m1 \
-                | head -1 | cut -d: -f1 || true)
-            if [ -z "$block_start" ]; then
-                echo "  [ERROR] Function at line ${line_num} has no preceding CAMUS-SL block"
-                missing_sl=$((missing_sl + 1))
-            fi
-        done <<< "$func_lines"
-        if [ "$missing_sl" -eq 0 ]; then
-            echo "  [OK] All functions preceded by CAMUS-SL blocks"
-        else
-            errors=$((errors + missing_sl))
-        fi
-    fi
-
-    # 7. Check that CAMUS-SL blocks contain intent:
-    local sl_blocks
-    sl_blocks=$(grep -n '^## CAMUS-SL$' "$file" 2>/dev/null || true)
-    if [ -n "$sl_blocks" ]; then
-        local missing_intent=0
-        while IFS=: read -r line_num line_content; do
-            local end_line
-            end_line=$(sed -n "$line_num,\$p" "$file" | grep -n '^## CAMUS-END$' | head -1 | cut -d: -f1)
-            if [ -n "$end_line" ]; then
-                end_line=$((line_num + end_line - 1))
-                local block_content
-                block_content=$(sed -n "$((line_num + 1)),$((end_line - 1))p" "$file" 2>/dev/null)
-                if ! echo "$block_content" | grep -qs '# intent:'; then
-                    echo "  [ERROR] CAMUS-SL block at line ${line_num} missing 'intent:'"
-                    missing_intent=$((missing_intent + 1))
-                fi
-            fi
-        done <<< "$sl_blocks"
-        if [ "$missing_intent" -eq 0 ]; then
-            echo "  [OK] All CAMUS-SL blocks declare intent:"
-        else
-            errors=$((errors + missing_intent))
-        fi
-    fi
-
-    # 8. Camus blocks properly closed
-    local total_end
-    total_end=$(grep -c '^## CAMUS-END$' "$file" 2>/dev/null || true)
-    local total_camus
-    total_camus=$(grep -c '^## CAMUS-' "$file" 2>/dev/null || true)
-    local open_blocks=$((total_camus - total_end))
-    if [ "$open_blocks" -eq "$total_end" ]; then
-        echo "  [OK] All Camus blocks properly closed"
-    else
-        echo "  [ERROR] ${open_blocks} opening markers but ${total_end} closing markers"
-        errors=$((errors + 1))
-    fi
-
-    # 9. Function length (MUST ≤ 50, SHOULD ≤ 20)
-    local long_funcs=0
-    local very_long_funcs=0
-    local current_func_name=""
-    local brace_depth=0
-    local in_func=0
-    local func_line_count=0
-    local prev_line_num=0
-    while IFS= read -r line_content; do
-        prev_line_num=$((prev_line_num + 1))
-        local func_pat='^[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*\([[:space:]]*\)[[:space:]]*'
-        if [[ "$line_content" =~ ${func_pat}\{ ]] \
-            || [[ "$line_content" =~ ${func_pat}$ ]]; then
-            if [ $in_func -eq 1 ]; then
-                if [ "$func_line_count" -gt 50 ]; then
-                    very_long_funcs=$((very_long_funcs + 1))
-                    errors=$((errors + 1))
-                    echo "  [ERROR] Function '${current_func_name}' is ${func_line_count} lines (MUST ≤ 50)"
-                elif [ "$func_line_count" -gt 20 ]; then
-                    long_funcs=$((long_funcs + 1))
-                    warnings=$((warnings + 1))
-                    echo "  [WARN] Function '${current_func_name}' is ${func_line_count} lines (SHOULD ≤ 20)"
-                fi
-            fi
-            current_func_name=$(echo "$line_content" | sed 's/(.*//' | tr -d ' ')
-            in_func=1
-            func_line_count=1
-            brace_depth=0
-            local open_br
-            open_br=$(echo "$line_content" | tr -cd '{' | wc -c)
-            brace_depth=$((brace_depth + open_br))
-            local close_br
-            close_br=$(echo "$line_content" | tr -cd '}' | wc -c)
-            brace_depth=$((brace_depth - close_br))
-        elif [ $in_func -eq 1 ]; then
-            func_line_count=$((func_line_count + 1))
-            local open_br close_br
-            open_br=$(echo "$line_content" | tr -cd '{' | wc -c)
-            close_br=$(echo "$line_content" | tr -cd '}' | wc -c)
-            if [ "$brace_depth" -gt 0 ] || echo "$line_content" | grep -q '{'; then
-                brace_depth=$((brace_depth + open_br - close_br))
-                if [ "$brace_depth" -le 0 ]; then
-                    if [ "$func_line_count" -gt 50 ]; then
-                        very_long_funcs=$((very_long_funcs + 1))
-                        errors=$((errors + 1))
-                        echo "  [ERROR] Function '${current_func_name}' is ${func_line_count} lines (MUST ≤ 50)"
-                    elif [ "$func_line_count" -gt 20 ]; then
-                        long_funcs=$((long_funcs + 1))
-                        warnings=$((warnings + 1))
-                        echo "  [WARN] Function '${current_func_name}' is ${func_line_count} lines (SHOULD ≤ 20)"
-                    fi
-                    in_func=0
-                fi
-            fi
-            if echo "$line_content" | grep -q '^## CAMUS-SIGNATURE$'; then
-                if [ "$func_line_count" -gt 50 ]; then
-                    very_long_funcs=$((very_long_funcs + 1))
-                    errors=$((errors + 1))
-                    echo "  [ERROR] Function '${current_func_name}' is ${func_line_count} lines (MUST ≤ 50)"
-                elif [ "$func_line_count" -gt 20 ]; then
-                    long_funcs=$((long_funcs + 1))
-                    warnings=$((warnings + 1))
-                    echo "  [WARN] Function '${current_func_name}' is ${func_line_count} lines (SHOULD ≤ 20)"
-                fi
-                in_func=0
-            fi
-        fi
-    done < "$file"
-
-    if [ $in_func -eq 1 ]; then
-        if [ "$func_line_count" -gt 50 ]; then
-            very_long_funcs=$((very_long_funcs + 1))
-            errors=$((errors + 1))
-            echo "  [ERROR] Function '${current_func_name}' is ${func_line_count} lines (MUST ≤ 50)"
-        elif [ "$func_line_count" -gt 20 ]; then
-            long_funcs=$((long_funcs + 1))
-            warnings=$((warnings + 1))
-            echo "  [WARN] Function '${current_func_name}' is ${func_line_count} lines (SHOULD ≤ 20)"
-        fi
-    fi
-
-    # 10. Line length (MUST ≤ 120, SHOULD ≤ 80)
-    local long_lines=0
-    local very_long_lines=0
-    local line_num=0
-    while IFS= read -r line_content; do
-        line_num=$((line_num + 1))
-        local len=${#line_content}
-        if [ "$len" -gt 120 ]; then
-            very_long_lines=$((very_long_lines + 1))
-            echo "  [ERROR] Line ${line_num} is ${len} chars (MUST ≤ 120)"
-            errors=$((errors + 1))
-        elif [ "$len" -gt 80 ]; then
-            long_lines=$((long_lines + 1))
-        fi
-    done < "$file"
-    if [ "$very_long_lines" -eq 0 ]; then
-        echo "  [OK] No lines exceed 120 characters"
-    fi
-    if [ "$long_lines" -gt 0 ]; then
-        if [ "$very_long_lines" -eq 0 ]; then
-            echo "  [WARN] ${long_lines} line(s) exceed 80 characters (SHOULD ≤ 80)"
-            warnings=$((warnings + 1))
-        fi
-    else
-        echo "  [OK] All lines under 80 characters"
-    fi
+    check_line_lengths "$file"
+    rc=$?
+    [ "$rc" -eq 2 ] && errors=$((errors + 1))
+    [ "$rc" -eq 1 ] && warnings=$((warnings + 1))
 
     echo ""
     if [ "$errors" -gt 0 ] && [ "$warnings" -gt 0 ]; then
@@ -565,7 +714,8 @@ do_check() {
         return 0
     fi
 }
-## --- Subcommand: sign ---
+
+## --- Sign helpers ---
 
 ## CAMUS-SL
 # intent: compute a cryptographic signature for content and format a CAMUS-SIGNATURE block
@@ -598,6 +748,7 @@ compute_signature() {
     rm -f "$tmp_content" "$tmp_sig"
     echo "$sig_b64"
 }
+
 ## CAMUS-SL
 # intent: generate a whole-file signature block for text or markdown files
 # input:
@@ -611,7 +762,8 @@ compute_signature() {
 #   stdout: signature block to append
 ## CAMUS-END
 format_whole_signature() {
-    local file="$1" fpr="$2" sig_b64="$3" timestamp="$4" signatory="$5" file_type="$6"
+    local file="$1" fpr="$2" sig_b64="$3" timestamp="$4"
+    local signatory="$5" file_type="$6"
 
     echo ""
     echo "---"
@@ -619,7 +771,7 @@ format_whole_signature() {
         echo "<pre>"
     fi
     echo "*camus-sig-1*"
-    echo "**Signed — ${signatory}**"
+    echo "**Signed -- ${signatory}**"
     echo "Date: ${timestamp}"
     echo "Fingerprint: SHA256:${fpr}"
     echo "Signature: ${sig_b64}"
@@ -627,6 +779,7 @@ format_whole_signature() {
         echo "</pre>"
     fi
 }
+
 ## CAMUS-SL
 # intent: sign an entire file as a single unit (for .txt and .md)
 # input:
@@ -638,24 +791,23 @@ format_whole_signature() {
 #   $6: file type ("txt" or "md")
 ## CAMUS-END
 do_sign_whole_file() {
-    local file="$1" privkey="$2" pubkey="$3" password="$4" signatory="$5" file_type="$6"
+    local file="$1" privkey="$2" pubkey="$3" password="$4"
+    local signatory="$5" file_type="$6"
 
-    local timestamp fpr sig_b64
+    local timestamp fpr sig_b64 content
     timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     fpr=$(fingerprint_of "$pubkey")
-
-    local content
     content=$(cat "$file")
-
     sig_b64=$(compute_signature "$privkey" "$password" "$content")
 
     local sig_block
-    sig_block=$(format_whole_signature "$file" "$fpr" "$sig_b64" "$timestamp" "$signatory" "$file_type")
+    sig_block=$(format_whole_signature \
+        "$file" "$fpr" "$sig_b64" "$timestamp" "$signatory" "$file_type")
 
     echo "$sig_block" >> "$file"
-
     echo "Signed (whole-file): ${file}" >&2
 }
+
 ## CAMUS-SL
 # intent: generate a CAMUS-SIGNATURE block for a shell function
 # input:
@@ -676,6 +828,7 @@ format_func_signature_block() {
     echo "# signature: ${sig_b64}"
     echo "## CAMUS-END"
 }
+
 ## CAMUS-SL
 # intent: find the CAMUS-SL block preceding a function definition
 # input:
@@ -687,27 +840,62 @@ format_func_signature_block() {
 find_sl_block() {
     local file="$1" func_line="$2"
     local search_end=$((func_line - 1))
-    # Search backwards from the function line for a CAMUS-SL marker
     local sl_line
-    sl_line=$(sed -n "1,${search_end}p" "$file" | grep -n '^## CAMUS-SL$' | tail -1 | cut -d: -f1)
+    sl_line=$(sed -n "1,${search_end}p" "$file" \
+        | grep -n '^## CAMUS-SL$' | tail -1 | cut -d: -f1)
     if [ -z "$sl_line" ]; then
-        echo ""
-        return
+        echo ""; return
     fi
-    # Find the matching CAMUS-END after the SL marker
     local end_line
-    end_line=$(sed -n "${sl_line},\$p" "$file" | grep -n '^## CAMUS-END$' | head -1 | cut -d: -f1)
+    end_line=$(sed -n "${sl_line},\$p" "$file" \
+        | grep -n '^## CAMUS-END$' | head -1 | cut -d: -f1)
     if [ -z "$end_line" ]; then
-        echo ""
-        return
+        echo ""; return
     fi
     end_line=$((sl_line + end_line - 1))
-    # But don't go past the function definition
     if [ "$end_line" -ge "$func_line" ]; then
         end_line=$((func_line - 1))
     fi
     sed -n "${sl_line},${end_line}p" "$file"
 }
+
+## CAMUS-SL
+# intent: count brace depth for a single line, respecting heredocs
+# input:
+#   $1: current depth
+#   $2: line text
+#   $3: in_heredoc flag (0 or 1)
+#   $4: heredoc delimiter
+# output:
+#   stdout: "new_depth in_heredoc delimiter" (space-separated)
+## CAMUS-END
+track_brace_depth() {
+    local depth="$1" line="$2" in_hdoc="$3" delim="$4"
+
+    if [ "$in_hdoc" -eq 0 ]; then
+        if echo "$line" | grep -qE '<<\s*[-]?\w+$'; then
+            in_hdoc=1
+            delim=$(echo "$line" | sed 's/.*<<[-]\?//' | awk '{print $1}')
+        elif echo "$line" | grep -qE '<<-\s*\w+$'; then
+            in_hdoc=2
+            delim=$(echo "$line" | sed 's/.*<<-//' | awk '{print $1}')
+        fi
+    elif [ "$in_hdoc" -eq 1 ] && echo "$line" | grep -q "^${delim}$"; then
+        in_hdoc=0; delim=""
+    elif [ "$in_hdoc" -eq 2 ] && echo "$line" \
+        | grep -q "^[[:space:]]*${delim}$"; then
+        in_hdoc=0; delim=""
+    fi
+
+    if [ "$in_hdoc" -eq 0 ]; then
+        local open_br=$(echo "$line" | tr -cd '{' | wc -c)
+        local close_br=$(echo "$line" | tr -cd '}' | wc -c)
+        depth=$((depth + open_br - close_br))
+    fi
+
+    echo "${depth} ${in_hdoc} ${delim}"
+}
+
 ## CAMUS-SL
 # intent: get the body of a function (from definition to closing brace)
 # input:
@@ -715,57 +903,32 @@ find_sl_block() {
 #   $2: line number of the function definition
 # output:
 #   stdout: function content (definition + body)
-#   stdout: end_line: the last line of the function
+#   stdout: end_line: the last line of the function (on last line)
 ## CAMUS-END
 get_function_body() {
     local file="$1" start_line="$2"
-    local line_num=0
-    local brace_depth=0
-    local started=0
-    local content=""
-    local end_line=0
-    local in_heredoc=0
-    local heredoc_delim=""
+    local line_num=0 brace_depth=0 started=0 content=""
+    local end_line=0 in_heredoc=0 heredoc_delim=""
+    local state
 
     while IFS= read -r line; do
         line_num=$((line_num + 1))
-        if [ "$line_num" -lt "$start_line" ]; then
-            continue
-        fi
-        if [ "$started" -eq 0 ]; then
-            started=1
-        fi
+        [ "$line_num" -lt "$start_line" ] && continue
+        [ "$started" -eq 0 ] && started=1
 
-        # Track heredocs to avoid counting braces inside them
-        if [ "$in_heredoc" -eq 0 ]; then
-            if echo "$line" | grep -qE '<<\s*[-]?\w+$'; then
-                in_heredoc=1
-                heredoc_delim=$(echo "$line" | sed 's/.*<<[-]\?//' | awk '{print $1}')
-            elif echo "$line" | grep -qE '<<-\s*\w+$'; then
-                in_heredoc=2
-                heredoc_delim=$(echo "$line" | sed 's/.*<<-//' | awk '{print $1}')
-            elif echo "$line" | grep -qE '<<<'; then
-                : # here-string, no brace issue
-            fi
-        elif [ "$in_heredoc" -eq 1 ] && echo "$line" | grep -q "^${heredoc_delim}$"; then
-            in_heredoc=0
-        elif [ "$in_heredoc" -eq 2 ] && echo "$line" | grep -q "^[[:space:]]*${heredoc_delim}$"; then
-            in_heredoc=0
-        fi
-
-        if [ "$in_heredoc" -eq 0 ]; then
-            local open_br close_br
-            open_br=$(echo "$line" | tr -cd '{' | wc -c)
-            close_br=$(echo "$line" | tr -cd '}' | wc -c)
-            brace_depth=$((brace_depth + open_br - close_br))
-        fi
+        state=$(track_brace_depth \
+            "$brace_depth" "$line" "$in_heredoc" "$heredoc_delim")
+        brace_depth=$(echo "$state" | cut -d' ' -f1)
+        in_heredoc=$(echo "$state" | cut -d' ' -f2)
+        heredoc_delim=$(echo "$state" | cut -d' ' -f3-)
 
         content="${content}${line}"$'\n'
 
-        if [ "$brace_depth" -le 0 ] && [ "$started" -eq 1 ] && [ "$line_num" -gt "$start_line" ]; then
-            end_line=$line_num
+        if [ "$brace_depth" -le 0 ] \
+            && [ "$started" -eq 1 ] \
+            && [ "$line_num" -gt "$start_line" ]; then
             printf '%s' "$content"
-            echo "END_LINE:${end_line}"
+            echo "END_LINE:${line_num}"
             return
         fi
     done < "$file"
@@ -773,6 +936,100 @@ get_function_body() {
     printf '%s' "$content"
     echo "END_LINE:${line_num}"
 }
+
+## CAMUS-SL
+# intent: scan a shell script and record function start/end line ranges
+# input:
+#   $1: file path
+# output:
+#   stdout: "start:end" pairs, one per line, in order
+## CAMUS-END
+scan_functions() {
+    local file="$1"
+    local line_num=0 in_func=0 brace_depth=0 func_start=0
+    local in_heredoc=0 heredoc_delim="" state
+
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+        if [ "$in_func" -eq 0 ]; then
+            if echo "$line" | grep -qE '^[a-zA-Z_][a-zA-Z0-9_]*\(\) \{'; then
+                in_func=1; func_start=$line_num; brace_depth=0
+                state=$(track_brace_depth \
+                    "$brace_depth" "$line" "$in_heredoc" "$heredoc_delim")
+                brace_depth=$(echo "$state" | cut -d' ' -f1)
+                if [ "$brace_depth" -le 0 ]; then
+                    in_func=0
+                    echo "${func_start}:${line_num}"
+                fi
+            fi
+        else
+            state=$(track_brace_depth \
+                "$brace_depth" "$line" "$in_heredoc" "$heredoc_delim")
+            brace_depth=$(echo "$state" | cut -d' ' -f1)
+            in_heredoc=$(echo "$state" | cut -d' ' -f2)
+            heredoc_delim=$(echo "$state" | cut -d' ' -f3-)
+
+            if [ "$brace_depth" -le 0 ] && [ "$line_num" -gt "$func_start" ]; then
+                in_func=0
+                echo "${func_start}:${line_num}"
+            fi
+        fi
+    done < "$file"
+}
+
+## CAMUS-SL
+# intent: insert CAMUS-SIGNATURE blocks for all unsigned functions in a file
+# input:
+#   $1: file path
+#   $2: private key path
+#   $3: password
+#   $4: fingerprint
+#   $5: timestamp
+#   $6: signatory
+## CAMUS-END
+insert_func_sig_blocks() {
+    local file="$1" privkey="$2" password="$3"
+    local fpr="$4" timestamp="$5" signatory="$6"
+
+    local func_data_str
+    func_data_str=$(scan_functions "$file")
+    [ -z "$func_data_str" ] && { echo "No functions found" >&2; return; }
+
+    local temp_file func_s func_e line_num=0 idx=0 in_sig=0
+    temp_file=$(mktemp)
+    local -a func_data
+    while IFS=: read -r s e; do
+        func_data+=("$s:$e")
+    done <<< "$func_data_str"
+    local total="${#func_data[@]}"
+
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+        if [ "$in_sig" -eq 1 ]; then
+            echo "$line" | grep -q '^## CAMUS-END$' && in_sig=0
+            continue
+        fi
+        if echo "$line" | grep -q '^## CAMUS-SIGNATURE$'; then
+            [ "$idx" -lt "$total" ] && in_sig=1
+            continue
+        fi
+        echo "$line" >> "$temp_file"
+        if [ "$idx" -lt "$total" ]; then
+            func_s="${func_data[$idx]%%:*}"
+            func_e="${func_data[$idx]##*:}"
+            if [ "$line_num" -eq "$func_e" ]; then
+                sign_one_function "$file" "$func_s" "$func_e" \
+                    "$privkey" "$password" "$fpr" "$timestamp" \
+                    "$signatory" "$temp_file"
+                idx=$((idx + 1))
+            fi
+        fi
+    done < "$file"
+
+    mv "$temp_file" "$file"
+    echo "Signed ${idx} function(s) in ${file}" >&2
+}
+
 ## CAMUS-SL
 # intent: sign each unsigned function in a shell script
 # input:
@@ -784,152 +1041,156 @@ get_function_body() {
 #   $6: key directory (for fingerprint lookup)
 ## CAMUS-END
 do_sign_per_function() {
-    local file="$1" privkey="$2" pubkey="$3" password="$4" signatory="$5" key_dir="$6"
+    local file="$1" privkey="$2" pubkey="$3" password="$4"
+    local signatory="$5" key_dir="$6"
     local timestamp fpr
     timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     fpr=$(fingerprint_of "$pubkey")
+    insert_func_sig_blocks \
+        "$file" "$privkey" "$password" "$fpr" "$timestamp" "$signatory"
+}
 
-    # First pass: find all functions and their boundaries
-    local -a func_data
-    func_data=()
-    local line_num=0
-    local in_func=0
-    local brace_depth=0
-    local func_start=0
-    local func_line_start=0
-    local in_heredoc=0
-    local heredoc_delim=""
+## CAMUS-SL
+# intent: compute and append a signature block for one function
+# input:
+#   $1: file path
+#   $2: function start line
+#   $3: function end line
+#   $4: private key path
+#   $5: password
+#   $6: fingerprint
+#   $7: timestamp
+#   $8: signatory
+#   $9: temp file to append to
+## CAMUS-END
+sign_one_function() {
+    local file="$1" func_s="$2" func_e="$3" privkey="$4"
+    local password="$5" fpr="$6" timestamp="$7" signatory="$8"
+    local temp_file="$9"
 
-    while IFS= read -r line; do
-        line_num=$((line_num + 1))
-
-        if [ "$in_func" -eq 0 ]; then
-            if echo "$line" | grep -qE '^[a-zA-Z_][a-zA-Z0-9_]*\(\) \{'; then
-                in_func=1
-                func_start=$line_num
-                brace_depth=0
-                local open_br
-                open_br=$(echo "$line" | tr -cd '{' | wc -c)
-                local close_br
-                close_br=$(echo "$line" | tr -cd '}' | wc -c)
-                brace_depth=$((brace_depth + open_br - close_br))
-                if [ "$brace_depth" -le 0 ]; then
-                    in_func=0
-                    func_data+=("${func_start}:${line_num}")
-                fi
-            fi
-        else
-            if [ "$in_heredoc" -eq 0 ]; then
-                if echo "$line" | grep -qE '<<[[:space:]]*[-]?\w+$' || \
-                   echo "$line" | grep -qE '<<-[-]?\w+$'; then
-                    in_heredoc=1
-                    heredoc_delim=$(echo "$line" | sed 's/.*<<[-]\?//' | sed 's/[[:space:]]*//' | awk '{print $1}')
-                fi
-            elif [ "$in_heredoc" -eq 1 ]; then
-                local trimmed
-                trimmed=$(echo "$line" | sed 's/^[[:space:]]*//')
-                if [ "$trimmed" = "$heredoc_delim" ]; then
-                    in_heredoc=0
-                fi
-            fi
-
-            if [ "$in_heredoc" -eq 0 ]; then
-                local open_br2 close_br2
-                open_br2=$(echo "$line" | tr -cd '{' | wc -c)
-                close_br2=$(echo "$line" | tr -cd '}' | wc -c)
-                brace_depth=$((brace_depth + open_br2 - close_br2))
-            fi
-
-            if [ "$brace_depth" -le 0 ] && [ "$line_num" -gt "$func_start" ]; then
-                in_func=0
-                func_data+=("${func_start}:${line_num}")
-            fi
-        fi
-    done < "$file"
-
-    local total="${#func_data[@]}"
-    if [ "$total" -eq 0 ]; then
-        echo "No functions found in ${file}" >&2
-        return
+    local sl_start
+    sl_start=$(sed -n '1,'"$func_s"'p' "$file" \
+        | grep -n '^## CAMUS-SL$' | tail -1 | cut -d: -f1 || true)
+    local sl_content=""
+    if [ -n "$sl_start" ]; then
+        sl_content=$(sed -n "${sl_start},/^## CAMUS-END\$/p" "$file" 2>/dev/null || true)
     fi
 
-    # Second pass: read file and insert signatures
-    local temp_file
-    temp_file=$(mktemp)
+    local func_body
+    func_body=$(sed -n "${func_s},${func_e}p" "$file")
 
-    local current_func_idx=0
-    local processing_sig=0
-    local sig_end_line=0
+    local sign_content
+    if [ -n "$sl_content" ]; then
+        sign_content="${sl_content}"$'\n'"${func_body}"
+    else
+        sign_content="${func_body}"
+    fi
 
-    line_num=0
-    while IFS= read -r line; do
-        line_num=$((line_num + 1))
-        local processed=0
-
-        # Skip existing signature blocks (they will be replaced)
-        if [ "$processing_sig" -eq 1 ]; then
-            if echo "$line" | grep -q '^## CAMUS-END$'; then
-                processing_sig=0
-            fi
-            continue
-        fi
-        if echo "$line" | grep -q '^## CAMUS-SIGNATURE$'; then
-            if [ "$current_func_idx" -lt "$total" ]; then
-                # Found an existing signature — skip until CAMUS-END
-                processing_sig=1
-                continue
-            else
-                # Bare placeholder after last function — remove it
-                continue
-            fi
-        fi
-
-        # Write line to output
-        echo "$line" >> "$temp_file"
-
-        # Check if this line ends a function that needs signing
-        if [ "$current_func_idx" -lt "$total" ]; then
-            local func_info="${func_data[$current_func_idx]}"
-            local func_s="${func_info%%:*}"
-            local func_e="${func_info##*:}"
-            if [ "$line_num" -eq "$func_e" ]; then
-                # Find the SL block for this function
-                local sl_start
-                sl_start=$(sed -n '1,'"$func_s"'p' "$file" \
-                    | grep -n '^## CAMUS-SL$' | tail -1 | cut -d: -f1 || true)
-                local sl_content=""
-                if [ -n "$sl_start" ]; then
-                    sl_content=$(sed -n "${sl_start},/^## CAMUS-END\$/p" "$file" 2>/dev/null || true)
-                fi
-
-                # Extract function body from original file
-                local func_body
-                func_body=$(sed -n "${func_s},${func_e}p" "$file")
-
-                # Build content to sign
-                local sign_content
-                if [ -n "$sl_content" ]; then
-                    sign_content="${sl_content}"$'\n'"${func_body}"
-                else
-                    sign_content="${func_body}"
-                fi
-
-                # Compute and insert signature
-                local sig_b64
-                sig_b64=$(compute_signature "$privkey" "$password" "$sign_content")
-                local sig_block
-                sig_block=$(format_func_signature_block "$sig_b64" "$fpr" "$timestamp" "$signatory")
-                echo "$sig_block" >> "$temp_file"
-
-                current_func_idx=$((current_func_idx + 1))
-            fi
-        fi
-    done < "$file"
-
-    mv "$temp_file" "$file"
-    echo "Signed ${current_func_idx} function(s) in ${file}" >&2
+    local sig_b64
+    sig_b64=$(compute_signature "$privkey" "$password" "$sign_content")
+    local sig_block
+    sig_block=$(format_func_signature_block "$sig_b64" "$fpr" "$timestamp" "$signatory")
+    echo "$sig_block" >> "$temp_file"
 }
-## --- Subcommand: verify ---
+
+## --- Verify helpers ---
+
+## CAMUS-SL
+# intent: extract and decode a signature block from a file
+# input:
+#   $1: file path
+#   $2: sig block start line (*camus-sig-1* line)
+#   $3: file type ("txt" or "md")
+# output:
+#   stdout: "content_file sig_block_file sig_b64 fpr date" (tab-separated)
+#   return: 0 on success, 1 on failure
+## CAMUS-END
+extract_whole_sig_info() {
+    local file="$1" sig_line="$2" file_type="$3"
+    local content_end
+    if [ "$file_type" = "md" ]; then
+        content_end=$((sig_line - 4))
+    else
+        content_end=$((sig_line - 3))
+    fi
+
+    local tmp_content tmp_sig_block
+    tmp_content=$(mktemp)
+    tmp_sig_block=$(mktemp)
+
+    head -n "$content_end" "$file" > "$tmp_content"
+    tail -n "+$((sig_line - 2))" "$file" > "$tmp_sig_block"
+
+    local sig_b64 stored_fpr stored_date
+    sig_b64=$(grep '^Signature: ' "$tmp_sig_block" | sed 's/^Signature: //')
+    stored_fpr=$(grep '^Fingerprint: ' "$tmp_sig_block" \
+        | sed 's/^Fingerprint: SHA256://')
+    stored_date=$(grep '^Date: ' "$tmp_sig_block" | sed 's/^Date: //')
+
+    if [ -z "$sig_b64" ]; then
+        echo "Error: malformed signature block." >&2
+        rm -f "$tmp_content" "$tmp_sig_block"
+        return 1
+    fi
+
+    echo "${tmp_content} ${tmp_sig_block} ${sig_b64} ${stored_fpr} ${stored_date}"
+}
+
+## CAMUS-SL
+# intent: resolve public key by fingerprint or direct path
+# input:
+#   $1: fingerprint
+#   $2: explicit public key path (optional)
+#   $3: key directory for auto-detection
+# output:
+#   stdout: resolved public key path
+#   return: 0 on success, 1 on failure
+## CAMUS-END
+resolve_pubkey() {
+    local stored_fpr="$1" pubkey="$2" key_dir="$3"
+    if [ -z "$pubkey" ]; then
+        pubkey=$(find_key_by_fingerprint "$stored_fpr" "$key_dir" || true)
+        if [ -z "$pubkey" ]; then
+            echo "Error: no public key found for fingerprint" >&2
+            return 1
+        fi
+    elif [ ! -f "$pubkey" ]; then
+        echo "Error: public key not found: ${pubkey}" >&2
+        return 1
+    fi
+    echo "$pubkey"
+}
+
+## CAMUS-SL
+# intent: prepare public key for verification (extract from cert if needed)
+# input:
+#   $1: path to public key or certificate
+#   $2: date string for expiration check
+# output:
+#   stdout: path to temp file with raw public key
+#   return: 0 on success, 1 on failure
+## CAMUS-END
+prepare_pubkey() {
+    local pubkey="$1" sig_date="$2"
+    local tmp_pubkey
+    tmp_pubkey=$(mktemp)
+
+    if head -1 "$pubkey" 2>/dev/null | grep -q 'BEGIN CERTIFICATE'; then
+        if ! cert_valid_at "$pubkey" "$sig_date"; then
+            local cert_end
+            cert_end=$(openssl x509 -in "$pubkey" -noout -enddate 2>/dev/null \
+                | cut -d= -f2)
+            echo "FAIL -- key was already expired at signature date." >&2
+            echo "  Key valid until: ${cert_end}" >&2
+            rm -f "$tmp_pubkey"
+            return 1
+        fi
+        extract_pubkey_from_cert "$pubkey" > "$tmp_pubkey"
+    else
+        cat "$pubkey" > "$tmp_pubkey"
+    fi
+    echo "$tmp_pubkey"
+}
 
 ## CAMUS-SL
 # intent: verify a whole-file signature block
@@ -945,148 +1206,84 @@ do_verify_whole_file() {
     local file="$1" pubkey="${2:-}" key_dir="$3" file_type="$4"
 
     local sig_line
-    sig_line=$(grep -n '^\*camus-sig-1\*$' "$file" 2>/dev/null | tail -1 | cut -d: -f1 || true)
+    sig_line=$(grep -n '^\*camus-sig-1\*$' "$file" 2>/dev/null \
+        | tail -1 | cut -d: -f1 || true)
 
     if [ -z "$sig_line" ]; then
-        echo "Error: no signature found in file." >&2
-        return 1
+        echo "Error: no signature found in file." >&2; return 1
     fi
 
-    # The signature block layout differs by type:
-    #   .txt: blank, ---, *camus-sig-1*   → offset = 3
-    #   .md:  blank, ---, <pre>, *camus-sig-1* → offset = 4
-    local content_end
-    if [ "$file_type" = "md" ]; then
-        content_end=$((sig_line - 4))
-    else
-        content_end=$((sig_line - 3))
-    fi
+    local sig_info tmp_content tmp_sig_block sig_b64 stored_fpr stored_date
+    sig_info=$(extract_whole_sig_info "$file" "$sig_line" "$file_type") || return 1
 
-    local tmp_content tmp_sig_block tmp_sig_bin tmp_pubkey
-    tmp_content=$(mktemp)
-    tmp_sig_block=$(mktemp)
+    tmp_content=$(echo "$sig_info" | cut -d' ' -f1)
+    tmp_sig_block=$(echo "$sig_info" | cut -d' ' -f2)
+    sig_b64=$(echo "$sig_info" | cut -d' ' -f3)
+    stored_fpr=$(echo "$sig_info" | cut -d' ' -f4)
+    stored_date=$(echo "$sig_info" | cut -d' ' -f5)
+
+    pubkey=$(resolve_pubkey "$stored_fpr" "$pubkey" "$key_dir") || {
+        rm -f "$tmp_content" "$tmp_sig_block"; return 1
+    }
+
+    local tmp_pubkey
+    tmp_pubkey=$(prepare_pubkey "$pubkey" "$stored_date") || {
+        rm -f "$tmp_content" "$tmp_sig_block"; return 1
+    }
+
+    verify_sig_against_content \
+        "$tmp_content" "$sig_b64" "$tmp_pubkey" "$stored_date" "$pubkey"
+    local rc=$?
+
+    rm -f "$tmp_content" "$tmp_sig_block" "$tmp_pubkey"
+    return $rc
+}
+
+## CAMUS-SL
+# intent: verify a base64 signature against file content with a public key
+# input:
+#   $1: path to content file
+#   $2: base64-encoded signature
+#   $3: path to raw public key file
+#   $4: signature date (for display)
+#   $5: original public key path (for display)
+# output:
+#   stdout: verification result
+#   return: 0 on valid, 1 on invalid
+## CAMUS-END
+verify_sig_against_content() {
+    local tmp_content="$1" sig_b64="$2" tmp_pubkey="$3"
+    local stored_date="$4" pubkey="$5"
+    local tmp_sig_bin
+
     tmp_sig_bin=$(mktemp)
-    tmp_pubkey=$(mktemp)
-
-    head -n "$content_end" "$file" > "$tmp_content"
-    tail -n "+$((sig_line - 2))" "$file" > "$tmp_sig_block"
-
-    local sig_b64 stored_fpr stored_date
-    sig_b64=$(grep '^Signature: ' "$tmp_sig_block" | sed 's/^Signature: //')
-    stored_fpr=$(grep '^Fingerprint: ' "$tmp_sig_block" | sed 's/^Fingerprint: SHA256://')
-    stored_date=$(grep '^Date: ' "$tmp_sig_block" | sed 's/^Date: //')
-
-    if [ -z "$sig_b64" ]; then
-        echo "Error: malformed signature block." >&2
-        rm -f "$tmp_content" "$tmp_sig_block" "$tmp_sig_bin" "$tmp_pubkey"
-        return 1
-    fi
-
-    # Resolve public key
-    if [ -z "$pubkey" ]; then
-        pubkey=$(find_key_by_fingerprint "$stored_fpr" "$key_dir" || true)
-        if [ -z "$pubkey" ]; then
-            echo "Error: no public key found for fingerprint SHA256:${stored_fpr}" >&2
-            rm -f "$tmp_content" "$tmp_sig_block" "$tmp_sig_bin" "$tmp_pubkey"
-            return 1
-        fi
-    elif [ ! -f "$pubkey" ]; then
-        echo "Error: public key not found: ${pubkey}" >&2
-        rm -f "$tmp_content" "$tmp_sig_block" "$tmp_sig_bin" "$tmp_pubkey"
-        return 1
-    fi
-
-    # Check certificate expiration
-    if head -1 "$pubkey" 2>/dev/null | grep -q 'BEGIN CERTIFICATE'; then
-        if ! cert_valid_at "$pubkey" "$stored_date"; then
-            local cert_end
-            cert_end=$(openssl x509 -in "$pubkey" -noout -enddate 2>/dev/null | cut -d= -f2)
-            echo "FAIL — key was already expired at signature date (${stored_date})." >&2
-            echo "  Key valid until: ${cert_end}" >&2
-            rm -f "$tmp_content" "$tmp_sig_block" "$tmp_sig_bin" "$tmp_pubkey"
-            return 1
-        fi
-        extract_pubkey_from_cert "$pubkey" > "$tmp_pubkey"
-    else
-        cat "$pubkey" > "$tmp_pubkey"
-    fi
-
     echo "$sig_b64" | openssl base64 -d -out "$tmp_sig_bin" 2>/dev/null
 
     if openssl pkeyutl -verify -pubin -inkey "$tmp_pubkey" \
         -rawin -in "$tmp_content" -sigfile "$tmp_sig_bin" 2>/dev/null; then
         local fpr
         fpr=$(fingerprint_of "$pubkey")
-        echo "OK — valid signature (SHA256:${fpr})" >&2
+        echo "OK -- valid signature (SHA256:${fpr})" >&2
         echo "Date: ${stored_date}" >&2
-        rm -f "$tmp_content" "$tmp_sig_block" "$tmp_sig_bin" "$tmp_pubkey"
+        rm -f "$tmp_sig_bin"
         return 0
     else
-        echo "FAIL — invalid signature or wrong public key." >&2
-        rm -f "$tmp_content" "$tmp_sig_block" "$tmp_sig_bin" "$tmp_pubkey"
+        echo "FAIL -- invalid signature or wrong public key." >&2
+        rm -f "$tmp_sig_bin"
         return 1
     fi
 }
+
 ## CAMUS-SL
-# intent: verify a single CAMUS-SIGNATURE block for a specific function
+# intent: find the function definition line preceding a signature block
 # input:
 #   $1: file path
 #   $2: line number of the CAMUS-SIGNATURE block
-#   $3: public key path
 # output:
-#   return 0 on valid, 1 on invalid
+#   stdout: line number of function definition (or 0 if not found)
 ## CAMUS-END
-verify_func_signature() {
-    local file="$1" sig_line="$2" pubkey="$3"
-
-    local tmp_content tmp_sig_bin tmp_pubkey
-    tmp_content=$(mktemp)
-    tmp_sig_bin=$(mktemp)
-    tmp_pubkey=$(mktemp)
-
-    # Extract signature block details
-    local sig_block
-    sig_block=$(sed -n "${sig_line},\$p" "$file" | sed -n '/^## CAMUS-SIGNATURE$/,/^## CAMUS-END$/p')
-
-    local sig_b64 stored_fpr stored_date signatory
-    sig_b64=$(echo "$sig_block" | grep '^# signature: ' | sed 's/^# signature: //')
-    stored_fpr=$(echo "$sig_block" | grep '^# fingerprint: ' | sed 's/^# fingerprint: sha256://')
-    stored_date=$(echo "$sig_block" | grep '^# date: ' | sed 's/^# date: //')
-    signatory=$(echo "$sig_block" | grep '^# signatory: ' | sed 's/^# signatory: //')
-
-    if [ -z "$sig_b64" ]; then
-        echo "Error: malformed signature block at line ${sig_line}" >&2
-        rm -f "$tmp_content" "$tmp_sig_bin" "$tmp_pubkey"
-        return 1
-    fi
-
-    # Check certificate expiration
-    if [ -f "$pubkey" ] && head -1 "$pubkey" 2>/dev/null | grep -q 'BEGIN CERTIFICATE'; then
-        if ! cert_valid_at "$pubkey" "$stored_date"; then
-            local cert_end
-            cert_end=$(openssl x509 -in "$pubkey" -noout -enddate 2>/dev/null | cut -d= -f2)
-            echo "FAIL — key expired at signature date (${stored_date})." >&2
-            echo "  Key valid until: ${cert_end}" >&2
-            rm -f "$tmp_content" "$tmp_sig_bin" "$tmp_pubkey"
-            return 1
-        fi
-        extract_pubkey_from_cert "$pubkey" > "$tmp_pubkey"
-    elif [ -f "$pubkey" ]; then
-        cat "$pubkey" > "$tmp_pubkey"
-    else
-        echo "Error: public key not found." >&2
-        rm -f "$tmp_content" "$tmp_sig_bin" "$tmp_pubkey"
-        return 1
-    fi
-
-    # Find the content that was signed: the function definition + body + SL block
-    # The signed content is everything between the previous CAMUS-END (or start of file)
-    # and the CAMUS-SIGNATURE block, minus the CAMUS-SL block markers and signature
-    # Actually, the signed content is: SL block + function body
-    # We need to find the function and its SL block
-
-    # Walk backwards from sig_line to find the function definition
-    local func_def_line=0
+find_func_def_for_sig() {
+    local file="$1" sig_line="$2"
     local search_line=$((sig_line - 1))
     while [ "$search_line" -gt 0 ]; do
         local line_content
@@ -1094,25 +1291,61 @@ verify_func_signature() {
         if echo "$line_content" | grep -q '^## CAMUS-SIGNATURE$'; then
             break
         fi
-        if echo "$line_content" | grep -qE '^[a-zA-Z_][a-zA-Z0-9_]*\s*\(\s*\)\s*\{'; then
-            func_def_line=$search_line
-            break
+        if echo "$line_content" \
+            | grep -qE '^[a-zA-Z_][a-zA-Z0-9_]*\s*\(\s*\)\s*\{'; then
+            echo "$search_line"
+            return 0
         fi
         search_line=$((search_line - 1))
     done
+    echo "0"
+}
 
-    if [ "$func_def_line" -eq 0 ]; then
-        echo "Error: could not find function definition for signature at line ${sig_line}" >&2
-        rm -f "$tmp_content" "$tmp_sig_bin" "$tmp_pubkey"
+## CAMUS-SL
+# intent: extract signature metadata from a CAMUS-SIGNATURE block
+# input:
+#   $1: file path
+#   $2: line number of the CAMUS-SIGNATURE block
+# output:
+#   stdout: "sig_b64 fpr date signatory" (tab-separated) or empty on failure
+## CAMUS-END
+extract_func_sig_data() {
+    local file="$1" sig_line="$2"
+    local sig_block
+    sig_block=$(sed -n "${sig_line},\$p" "$file" \
+        | sed -n '/^## CAMUS-SIGNATURE$/,/^## CAMUS-END$/p')
+
+    local sig_b64 stored_fpr stored_date signatory
+    sig_b64=$(echo "$sig_block" | grep '^# signature: ' \
+        | sed 's/^# signature: //')
+    stored_fpr=$(echo "$sig_block" | grep '^# fingerprint: ' \
+        | sed 's/^# fingerprint: sha256://')
+    stored_date=$(echo "$sig_block" | grep '^# date: ' \
+        | sed 's/^# date: //')
+    signatory=$(echo "$sig_block" | grep '^# signatory: ' \
+        | sed 's/^# signatory: //')
+
+    if [ -z "$sig_b64" ]; then
+        echo "Error: malformed signature block at line ${sig_line}" >&2
         return 1
     fi
 
-    # Get function body
-    local body_result
+    echo "${sig_b64}|${stored_fpr}|${stored_date}|${signatory}"
+}
+
+## CAMUS-SL
+# intent: reconstruct the content that was signed (SL block + function body)
+# input:
+#   $1: file path
+#   $2: function definition line
+# output:
+#   stdout: signed content
+## CAMUS-END
+reconstruct_signed_content() {
+    local file="$1" func_def_line="$2"
+    local body_result func_content="" func_end=0 reading_content=true
+
     body_result=$(get_function_body "$file" "$func_def_line")
-    local func_content=""
-    local func_end=0
-    local reading_content=true
 
     while IFS= read -r result_line; do
         if echo "$result_line" | grep -q '^END_LINE:'; then
@@ -1125,39 +1358,65 @@ verify_func_signature() {
 
     func_content="${func_content%$'\n'}"
 
-    # Find SL block
     local sl_block
     sl_block=$(find_sl_block "$file" "$func_def_line")
 
-    # Reconstruct signed content
-    local signed_content
     if [ -n "$sl_block" ]; then
-        signed_content="${sl_block}"$'\n'"${func_content}"
-    else
-        signed_content="${func_content}"
+        echo "${sl_block}"
+        echo ""
+    fi
+    echo "${func_content}"
+}
+
+## CAMUS-SL
+# intent: verify a single CAMUS-SIGNATURE block for a specific function
+# input:
+#   $1: file path
+#   $2: line number of the CAMUS-SIGNATURE block
+#   $3: public key path
+# output:
+#   return 0 on valid, 1 on invalid
+## CAMUS-END
+verify_func_signature() {
+    local file="$1" sig_line="$2" pubkey="$3"
+
+    local sig_data
+    sig_data=$(extract_func_sig_data "$file" "$sig_line") || return 1
+
+    local sig_b64 stored_fpr stored_date signatory
+    sig_b64=$(echo "$sig_data" | cut -d'|' -f1)
+    stored_fpr=$(echo "$sig_data" | cut -d'|' -f2)
+    stored_date=$(echo "$sig_data" | cut -d'|' -f3)
+    signatory=$(echo "$sig_data" | cut -d'|' -f4)
+
+    local tmp_pubkey
+    tmp_pubkey=$(prepare_pubkey "$pubkey" "$stored_date") || return 1
+
+    local func_def_line
+    func_def_line=$(find_func_def_for_sig "$file" "$sig_line")
+
+    if [ "$func_def_line" -eq 0 ]; then
+        echo "Error: could not find function definition for signature" >&2
+        rm -f "$tmp_pubkey"; return 1
     fi
 
-    # Verify
+    local signed_content
+    signed_content=$(reconstruct_signed_content "$file" "$func_def_line")
+
     local tmp_content_verify
     tmp_content_verify=$(mktemp)
     printf '%s' "$signed_content" > "$tmp_content_verify"
     echo "" >> "$tmp_content_verify"
 
-    echo "$sig_b64" | openssl base64 -d -out "$tmp_sig_bin" 2>/dev/null
+    verify_sig_against_content \
+        "$tmp_content_verify" "$sig_b64" "$tmp_pubkey" \
+        "$stored_date" "$pubkey"
+    local rc=$?
 
-    if openssl pkeyutl -verify -pubin -inkey "$tmp_pubkey" \
-        -rawin -in "$tmp_content_verify" -sigfile "$tmp_sig_bin" 2>/dev/null; then
-        local fpr
-        fpr=$(fingerprint_of "$pubkey")
-        echo "OK — function at line ${func_def_line}: valid (${signatory}, ${stored_date})"
-        rm -f "$tmp_content" "$tmp_sig_bin" "$tmp_pubkey" "$tmp_content_verify"
-        return 0
-    else
-        echo "FAIL — function at line ${func_def_line}: invalid signature."
-        rm -f "$tmp_content" "$tmp_sig_bin" "$tmp_pubkey" "$tmp_content_verify"
-        return 1
-    fi
+    rm -f "$tmp_pubkey" "$tmp_content_verify"
+    return $rc
 }
+
 ## CAMUS-SL
 # intent: verify all signatures in a Camus.sh script (per-function and whole-file)
 # input:
@@ -1171,32 +1430,40 @@ do_verify() {
     local file="$1" pubkey="${2:-}" key_dir="$3"
 
     if [ ! -f "$file" ]; then
-        echo "Error: file not found: ${file}" >&2
-        return 1
+        echo "Error: file not found: ${file}" >&2; return 1
     fi
 
     local file_type
     file_type=$(detect_file_type "$file")
 
-    # Check if this is a whole-file signature (has camus-sig-1 marker)
     if grep -qs '^\*camus-sig-1\*$' "$file"; then
         echo "Verifying whole-file signature: ${file}"
         do_verify_whole_file "$file" "$pubkey" "$key_dir" "$file_type"
         return $?
     fi
 
-    # Otherwise check for per-function CAMUS-SIGNATURE blocks
+    verify_per_function_sigs "$file" "$pubkey"
+}
+
+## CAMUS-SL
+# intent: verify per-function CAMUS-SIGNATURE blocks in a script
+# input:
+#   $1: file path
+#   $2: public key path (optional)
+# output:
+#   return 0 if all valid, 1 otherwise
+## CAMUS-END
+verify_per_function_sigs() {
+    local file="$1" pubkey="$2"
+
     local sig_blocks
     sig_blocks=$(grep -n '^## CAMUS-SIGNATURE$' "$file" 2>/dev/null || true)
-
     if [ -z "$sig_blocks" ]; then
-        echo "No signatures found in ${file}" >&2
-        return 1
+        echo "No signatures found in ${file}" >&2; return 1
     fi
 
     local total=0 valid=0 invalid=0
-
-    while IFS=: read -r line_num line_content; do
+    while IFS=: read -r line_num _; do
         total=$((total + 1))
         echo "  Verifying signature at line ${line_num}..."
         if verify_func_signature "$file" "$line_num" "$pubkey"; then
@@ -1210,6 +1477,7 @@ do_verify() {
     echo "Result: ${valid} valid, ${invalid} invalid out of ${total} signature(s)"
     [ "$invalid" -eq 0 ]
 }
+
 ## --- Subcommand: sign (dispatcher) ---
 
 ## CAMUS-SL
@@ -1228,16 +1496,14 @@ do_sign_file() {
     local force_type="${6:-}" key_dir="$7"
 
     if [ ! -f "$file" ]; then
-        echo "Error: file not found: ${file}" >&2
-        return 1
+        echo "Error: file not found: ${file}" >&2; return 1
     fi
 
     if is_signed "$file" && [ -z "$force_type" ]; then
         local file_type
         file_type=$(detect_file_type "$file")
         if [ "$file_type" != "sh" ]; then
-            echo "Skipping (already signed): ${file}" >&2
-            return 0
+            echo "Skipping (already signed): ${file}" >&2; return 0
         fi
     fi
 
@@ -1250,13 +1516,75 @@ do_sign_file() {
 
     case "$file_type" in
         sh)
-            do_sign_per_function "$file" "$privkey" "$pubkey" "$password" "$signatory" "$key_dir"
+            do_sign_per_function "$file" "$privkey" "$pubkey" \
+                "$password" "$signatory" "$key_dir"
             ;;
         txt|md|unknown)
-            do_sign_whole_file "$file" "$privkey" "$pubkey" "$password" "$signatory" "$file_type"
+            do_sign_whole_file "$file" "$privkey" "$pubkey" \
+                "$password" "$signatory" "$file_type"
             ;;
     esac
 }
+
+## CAMUS-SL
+# intent: check if a key is expired and print appropriate warning
+# input:
+#   $1: path to public key or certificate
+# output:
+#   stdout: remaining days info
+#   return: 0 if valid, exits if expired
+## CAMUS-END
+check_key_expiry() {
+    local pubkey="$1"
+    local key_remaining
+    key_remaining=$(key_expiry_info "$pubkey") || {
+        echo -e "\033[31mError: key expired $((-key_remaining)) day(s) ago.\033[0m" >&2
+        exit 1
+    }
+    echo "$key_remaining"
+}
+
+## CAMUS-SL
+# intent: interactively prompt user to approve or skip a file for signing
+# input:
+#   $1: file index (1-based)
+#   $2: total files
+#   $3: file path
+# output:
+#   stdout: the file path if approved, empty string if skipped
+## CAMUS-END
+review_one_file() {
+    local idx="$1" total="$2" file="$3"
+    local PAGER="${PAGER:-less}"
+    local answer
+
+    if [ ! -f "$file" ]; then
+        echo "[${idx}/${total}] Skipping (not found): ${file}" >&2
+        echo ""; return
+    fi
+
+    if grep -qs '^\*camus-sig-1\*$' "$file"; then
+        echo "[${idx}/${total}] Skipping (already signed): ${file}" >&2
+        echo ""; return
+    fi
+
+    echo "[${idx}/${total}] --- ${file} ---" >&2
+    "$PAGER" "$file" 2>/dev/null || cat "$file"
+    echo >&2
+    read -r -p "Sign this file? [y/N] " answer
+    echo >&2
+    case "${answer,,}" in
+        y|yes)
+            echo "  Approved." >&2
+            echo "$file"
+            ;;
+        *)
+            echo "  Skipped." >&2
+            echo ""
+            ;;
+    esac
+}
+
 ## CAMUS-SL
 # intent: review and sign multiple files interactively
 # input:
@@ -1271,69 +1599,188 @@ do_sign_files() {
     local privkey="$1" pubkey="$2" signatory="$3" force_type="$4" key_dir="$5"
     shift 5
     local files=("$@")
-    local PAGER="${PAGER:-less}"
     local approved=()
-    local file answer password
+    local file result
     local i
 
     local key_remaining
-    key_remaining=$(key_expiry_info "$pubkey") || {
-        echo -e "\033[31mError: key expired $((-key_remaining)) day(s) ago.\033[0m" >&2
-        exit 1
-    }
+    key_remaining=$(check_key_expiry "$pubkey")
 
     echo "Reviewing ${#files[@]} file(s) for signing." >&2
     echo >&2
 
     for ((i = 0; i < ${#files[@]}; i++)); do
         file="${files[$i]}"
-
-        if [ ! -f "$file" ]; then
-            echo "[$((i+1))/${#files[@]}] Skipping (not found): ${file}" >&2
-            continue
-        fi
-
-        if grep -qs '^\*camus-sig-1\*$' "$file"; then
-            echo "[$((i+1))/${#files[@]}] Skipping (already signed): ${file}" >&2
-            continue
-        fi
-
-        echo "[$((i+1))/${#files[@]}] --- ${file} ---" >&2
-        "$PAGER" "$file" 2>/dev/null || cat "$file"
-
-        echo >&2
-        read -r -p "Sign this file? [y/N] " answer
-        case "${answer,,}" in
-            y|yes)
-                approved+=("$file")
-                echo "  Approved." >&2
-                ;;
-            *)
-                echo "  Skipped." >&2
-                ;;
-        esac
-        echo >&2
+        result=$(review_one_file "$((i+1))" "${#files[@]}" "$file")
+        [ -n "$result" ] && approved+=("$result")
     done
 
     if [ ${#approved[@]} -eq 0 ]; then
-        echo "No files to sign." >&2
-        exit 0
+        echo "No files to sign." >&2; exit 0
     fi
 
+    local password
     password=$(prompt_password "Enter private key password: ")
 
     for file in "${approved[@]}"; do
-        do_sign_file "$file" "$privkey" "$pubkey" "$password" "$signatory" "$force_type" "$key_dir"
+        do_sign_file "$file" "$privkey" "$pubkey" "$password" \
+            "$signatory" "$force_type" "$key_dir"
     done
 
-    if [ "$key_remaining" -lt 7 ]; then
-        echo -e "\033[31mKey expires in ${key_remaining} day(s).\033[0m"
-    elif [ "$key_remaining" -lt 30 ]; then
-        echo -e "\033[33mKey expires in ${key_remaining} day(s).\033[0m"
+    print_key_expiry_warning "$key_remaining"
+}
+
+## CAMUS-SL
+# intent: print a color-coded key expiry warning
+# input:
+#   $1: remaining days
+# output:
+#   stdout: warning message
+## CAMUS-END
+print_key_expiry_warning() {
+    local remaining="$1"
+    if [ "$remaining" -lt 7 ]; then
+        echo -e "\033[31mKey expires in ${remaining} day(s).\033[0m"
+    elif [ "$remaining" -lt 30 ]; then
+        echo -e "\033[33mKey expires in ${remaining} day(s).\033[0m"
     else
-        echo "Key expires in ${key_remaining} day(s)."
+        echo "Key expires in ${remaining} day(s)."
     fi
 }
+
+## --- Command dispatchers ---
+
+## CAMUS-SL
+# intent: handle the init subcommand argument parsing and dispatch
+# input:
+#   $1: default key directory
+#   $@: remaining arguments
+## CAMUS-END
+cmd_init() {
+    local key_dir="$1"; shift
+    local days=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --key-dir) shift; key_dir="$1" ;;
+            --days) shift; days="$1" ;;
+            *)
+                echo "Error: unknown option: $1" >&2
+                usage
+                ;;
+        esac
+        shift
+    done
+    do_gen_key "$key_dir" "${days:-365}"
+}
+
+## CAMUS-SL
+# intent: handle the check subcommand
+# input:
+#   $@: arguments
+## CAMUS-END
+cmd_check() {
+    [ $# -lt 1 ] && usage
+    do_check "$1"
+}
+
+## CAMUS-SL
+# intent: handle the sign subcommand argument parsing and dispatch
+# input:
+#   $1: default key directory
+#   $@: remaining arguments
+## CAMUS-END
+cmd_sign() {
+    local key_dir="$1"; shift
+    local force_type="" pubkey=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --txt|--text) force_type="txt"; shift ;;
+            --md|--markdown) force_type="md"; shift ;;
+            --pubkey) shift; pubkey="$1"; shift ;;
+            --key-dir) shift; key_dir="$1"; shift ;;
+            --signatory) shift; SIGNATORY="$1"; shift ;;
+            *) break ;;
+        esac
+    done
+    [ $# -lt 1 ] && usage
+
+    if [ -z "$pubkey" ]; then
+        pubkey="${key_dir}/public.pem"
+    fi
+    local privkey="${key_dir}/private.pem"
+
+    if [ ! -f "$privkey" ]; then
+        echo "Error: private key not found at ${privkey}. Run init first." >&2
+        exit 1
+    fi
+    if [ ! -f "$pubkey" ]; then
+        echo "Error: public key not found at ${pubkey}." >&2
+        exit 1
+    fi
+
+    local signatory="${SIGNATORY:-}"
+    if [ -z "$signatory" ]; then
+        read -r -p "Signatory name: " signatory
+        if [ -z "$signatory" ]; then
+            echo "Error: signatory cannot be empty." >&2
+            exit 1
+        fi
+    fi
+
+    do_sign_files "$privkey" "$pubkey" "$signatory" \
+        "$force_type" "$key_dir" "$@"
+}
+
+## CAMUS-SL
+# intent: handle the verify subcommand argument parsing and dispatch
+# input:
+#   $1: default key directory
+#   $2: remaining arguments
+## CAMUS-END
+cmd_verify() {
+    local key_dir="$1"; shift
+    local pubkey=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --pubkey) shift; pubkey="$1" ;;
+            --key-dir) shift; key_dir="$1" ;;
+            *) break ;;
+        esac
+        shift
+    done
+    [ $# -lt 1 ] && usage
+
+    if [ -z "$pubkey" ]; then
+        pubkey="${key_dir}/public.pem"
+    fi
+    if [ ! -f "$pubkey" ]; then
+        pubkey=""
+    fi
+
+    do_verify "$1" "$pubkey" "$key_dir"
+}
+
+## CAMUS-SL
+# intent: handle the list-keys subcommand
+# input:
+#   $1: default key directory
+#   $@: remaining arguments
+## CAMUS-END
+cmd_list_keys() {
+    local key_dir="$1"; shift
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --key-dir) shift; key_dir="$1" ;;
+            *)
+                echo "Error: unknown option: $1" >&2
+                usage
+                ;;
+        esac
+        shift
+    done
+    do_list_keys "$key_dir"
+}
+
 ## --- Main ---
 
 ## CAMUS-SL
@@ -1346,153 +1793,20 @@ main() {
         usage
     fi
 
-    local script_dir
+    local script_dir key_dir cmd
     script_dir=$(kiss_dir)
-    local key_dir="${script_dir}/.secrets"
+    key_dir="${script_dir}/.secrets"
 
-    local cmd="$1"
+    cmd="$1"
     shift
 
     case "$cmd" in
-        init)
-            local days=""
-            while [ $# -gt 0 ]; do
-                case "$1" in
-                    --key-dir)
-                        shift
-                        key_dir="$1"
-                        ;;
-                    --days)
-                        shift
-                        days="$1"
-                        ;;
-                    *)
-                        echo "Error: unknown option: $1" >&2
-                        usage
-                        ;;
-                esac
-                shift
-            done
-            do_gen_key "$key_dir" "${days:-365}"
-            ;;
-
-        check)
-            [ $# -lt 1 ] && usage
-            do_check "$1"
-            ;;
-
-        sign)
-            local force_type=""
-            local pubkey=""
-            while [ $# -gt 0 ]; do
-                case "$1" in
-                    --txt|--text)
-                        force_type="txt"
-                        shift
-                        ;;
-                    --md|--markdown)
-                        force_type="md"
-                        shift
-                        ;;
-                    --pubkey)
-                        shift
-                        pubkey="$1"
-                        shift
-                        ;;
-                    --key-dir)
-                        shift
-                        key_dir="$1"
-                        shift
-                        ;;
-                    --signatory)
-                        shift
-                        SIGNATORY="$1"
-                        shift
-                        ;;
-                    *)
-                        break
-                        ;;
-                esac
-            done
-            [ $# -lt 1 ] && usage
-
-            if [ -z "$pubkey" ]; then
-                pubkey="${key_dir}/public.pem"
-            fi
-            local privkey="${key_dir}/private.pem"
-
-            if [ ! -f "$privkey" ]; then
-                echo "Error: private key not found at ${privkey}. Run init first." >&2
-                exit 1
-            fi
-            if [ ! -f "$pubkey" ]; then
-                echo "Error: public key not found at ${pubkey}." >&2
-                exit 1
-            fi
-
-            local signatory="${SIGNATORY:-}"
-            if [ -z "$signatory" ]; then
-                read -r -p "Signatory name: " signatory
-                if [ -z "$signatory" ]; then
-                    echo "Error: signatory cannot be empty." >&2
-                    exit 1
-                fi
-            fi
-
-            do_sign_files "$privkey" "$pubkey" "$signatory" "$force_type" "$key_dir" "$@"
-            ;;
-
-        verify)
-            local pubkey=""
-            while [ $# -gt 0 ]; do
-                case "$1" in
-                    --pubkey)
-                        shift
-                        pubkey="$1"
-                        ;;
-                    --key-dir)
-                        shift
-                        key_dir="$1"
-                        ;;
-                    *)
-                        break
-                        ;;
-                esac
-                shift
-            done
-            [ $# -lt 1 ] && usage
-
-            if [ -z "$pubkey" ]; then
-                pubkey="${key_dir}/public.pem"
-            fi
-            if [ ! -f "$pubkey" ]; then
-                pubkey=""
-            fi
-
-            do_verify "$1" "$pubkey" "$key_dir"
-            ;;
-
-        list-keys)
-            while [ $# -gt 0 ]; do
-                case "$1" in
-                    --key-dir)
-                        shift
-                        key_dir="$1"
-                        ;;
-                    *)
-                        echo "Error: unknown option: $1" >&2
-                        usage
-                        ;;
-                esac
-                shift
-            done
-            do_list_keys "$key_dir"
-            ;;
-
-        -h|--help|help)
-            usage
-            ;;
-
+        init) cmd_init "$key_dir" "$@" ;;
+        check) cmd_check "$@" ;;
+        sign) cmd_sign "$key_dir" "$@" ;;
+        verify) cmd_verify "$key_dir" "$@" ;;
+        list-keys) cmd_list_keys "$key_dir" "$@" ;;
+        -h|--help|help) usage ;;
         *)
             echo "Error: unknown command: $cmd" >&2
             usage
