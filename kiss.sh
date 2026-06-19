@@ -12,7 +12,7 @@
 ## CAMUS-END
 
 ## CAMUS-SL
-# intent: print usage information and exit
+# intent: print usage information
 # output:
 #   stdout: usage message
 ## CAMUS-END
@@ -30,39 +30,31 @@ Commands:
 Sign options:
   --txt, --text       Force whole-file text mode (--- separator)
   --md, --markdown    Force whole-file markdown mode (--- + <pre>)
-  --pubkey <path>     Use specific public key for verification
-  --key-dir <path>    Key storage directory (default: .secrets/)
+  --key-dir <path>    Key storage directory (default: ~/.config/camus)
   --signatory <name>  Signatory name (optional, prompts if absent)
 
 Verify options:
   --pubkey <path>     Use specific public key
-  --key-dir <path>    Key storage directory (default: .secrets/)
+  --key-dir <path>    Key storage directory (default: ~/.config/camus)
 EOF
-    exit 1
 }
 
-## CAMUS-SL
-# intent: get the directory where the script resides
-# output:
-#   stdout: absolute path to the script's directory
-## CAMUS-END
-kiss_dir() {
-    cd "$(dirname "$0")" || exit
-    pwd -P
-}
+
 
 ## CAMUS-SL
 # intent: prompt the user for a password (hidden input)
-# input:
-#   $1: prompt message (optional, default: "Enter password: ")
+# input[1]{param,desc,default}:
+#   $1,prompt message,"Enter password: "
 # output:
 #   stdout: the entered password
+#   return[1]{code,desc}:
+#     2,"empty password"
 ## CAMUS-END
 prompt_password() {
     local prompt="${1:-Enter password: }"
-    if [ -n "${PASSWORD:-}" ]; then
-        echo "Warning: PASSWORD env var used -- testing mode only." >&2
-        echo "$PASSWORD"
+    if [ -n "${CAMUS_TEST_SIGN_PASSWORD:-}" ]; then
+        echo "Warning: CAMUS_TEST_SIGN_PASSWORD env var used -- testing mode only." >&2
+        echo "$CAMUS_TEST_SIGN_PASSWORD"
         return
     fi
     local password
@@ -70,34 +62,34 @@ prompt_password() {
     echo >&2
     if [ -z "$password" ]; then
         echo "Error: password cannot be empty." >&2
-        exit 1
+        return 2
     fi
     echo "$password"
 }
 
 ## CAMUS-SL
 # intent: prompt the user for a password twice to confirm
-# input:
-#   $1: prompt message (optional)
 # output:
 #   stdout: the confirmed password
+#   return[2]{code,desc}:
+#     2,"empty password"
+#     3,"passwords do not match"
 ## CAMUS-END
 prompt_password_twice() {
-    local prompt="${1:-Enter password: }"
     local p1 p2
-    p1=$(prompt_password "$prompt")
+    p1=$(prompt_password "Enter password: ") || return $?
     p2=$(prompt_password "Confirm password: ")
     if [ "$p1" != "$p2" ]; then
         echo "Error: passwords do not match." >&2
-        exit 1
+        return 3
     fi
     echo "$p1"
 }
 
 ## CAMUS-SL
 # intent: compute the SHA256 fingerprint of a certificate or public key
-# input:
-#   $1: path to public key file
+# input[1]{param,desc}:
+#   $1,path to public key file
 # output:
 #   stdout: colon-formatted SHA256 fingerprint
 ## CAMUS-END
@@ -114,8 +106,8 @@ fingerprint_of() {
 
 ## CAMUS-SL
 # intent: normalize a fingerprint string for use as a filename
-# input:
-#   $1: fingerprint string
+# input[1]{param,desc}:
+#   $1,fingerprint string
 # output:
 #   stdout: fingerprint with all spaces and colons removed
 ## CAMUS-END
@@ -125,9 +117,9 @@ fingerprint_filepath() {
 
 ## CAMUS-SL
 # intent: find a public key file by its fingerprint
-# input:
-#   $1: fingerprint to search for
-#   $2: key directory to search in
+# input[2]{param,desc}:
+#   $1,fingerprint to search for
+#   $2,key directory to search in
 # output:
 #   stdout: path to the matching public key file, if found
 ## CAMUS-END
@@ -151,11 +143,9 @@ find_key_by_fingerprint() {
 
 ## CAMUS-SL
 # intent: check certificate expiration status at a given date
-# input:
-#   $1: path to certificate
-#   $2: ISO 8601 date string to check against
-# output:
-#   return 0 if valid, 1 if expired
+# input[2]{param,desc}:
+#   $1,path to certificate
+#   $2,ISO 8601 date string to check against
 ## CAMUS-END
 cert_valid_at() {
     local pubkey="$1" sig_date="$2"
@@ -176,8 +166,8 @@ cert_valid_at() {
 
 ## CAMUS-SL
 # intent: extract remaining validity days of a certificate
-# input:
-#   $1: path to certificate
+# input[1]{param,desc}:
+#   $1,path to certificate
 # output:
 #   stdout: number of remaining days (negative if expired)
 ## CAMUS-END
@@ -196,8 +186,8 @@ key_expiry_info() {
 
 ## CAMUS-SL
 # intent: extract raw public key from an X.509 certificate
-# input:
-#   $1: path to certificate
+# input[1]{param,desc}:
+#   $1,path to certificate
 # output:
 #   stdout: PEM-encoded public key
 ## CAMUS-END
@@ -207,8 +197,8 @@ extract_pubkey_from_cert() {
 
 ## CAMUS-SL
 # intent: detect file type for signing mode
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: "sh", "txt", "md", or "unknown"
 ## CAMUS-END
@@ -224,10 +214,8 @@ detect_file_type() {
 
 ## CAMUS-SL
 # intent: check if a file already has a camus-sig-1 marker
-# input:
-#   $1: file path
-# output:
-#   return 0 if signed, 1 if not
+# input[1]{param,desc}:
+#   $1,file path
 ## CAMUS-END
 is_signed() {
     local file="$1"
@@ -238,11 +226,12 @@ is_signed() {
 
 ## CAMUS-SL
 # intent: check that a script has a shebang line
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: check result
-#   return: 0 if OK, 2 if error
+#   return[1]{code,desc}:
+#     0,"if OK, 2 if error"
 ## CAMUS-END
 check_shebang() {
     if head -1 "$1" | grep -q '^#!' 2>/dev/null; then
@@ -256,11 +245,12 @@ check_shebang() {
 
 ## CAMUS-SL
 # intent: check that a script has a CAMUS-LEXICON block
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: check result
-#   return: 0 if OK, 1 if warning
+#   return[1]{code,desc}:
+#     0,"if OK, 1 if warning"
 ## CAMUS-END
 check_lexicon_block() {
     if grep -qs '^## CAMUS-LEXICON$' "$1"; then
@@ -274,11 +264,12 @@ check_lexicon_block() {
 
 ## CAMUS-SL
 # intent: check that no 'function' keyword is used
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: check result
-#   return: 0 if OK, 2 if error
+#   return[1]{code,desc}:
+#     0,"if OK, 2 if error"
 ## CAMUS-END
 check_no_function_keyword() {
     if grep -qs '^function ' "$1"; then
@@ -292,11 +283,12 @@ check_no_function_keyword() {
 
 ## CAMUS-SL
 # intent: check that main() is defined
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: check result
-#   return: 0 if OK, 2 if error
+#   return[1]{code,desc}:
+#     0,"if OK, 2 if error"
 ## CAMUS-END
 check_main_defined() {
     if grep -qs '^main()' "$1" || grep -qs '^main ()' "$1"; then
@@ -310,11 +302,12 @@ check_main_defined() {
 
 ## CAMUS-SL
 # intent: check that the script ends with main "$@"
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: check result
-#   return: 0 if OK, 2 if error
+#   return[1]{code,desc}:
+#     0,"if OK, 2 if error"
 ## CAMUS-END
 check_main_call() {
     if tail -1 "$1" | grep -q '^main "\$@"$' 2>/dev/null; then
@@ -331,11 +324,12 @@ check_main_call() {
 
 ## CAMUS-SL
 # intent: check for top-level executable code before first function
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: check result
-#   return: 0 if OK, 2 if error
+#   return[1]{code,desc}:
+#     0,"if OK, 2 if error"
 ## CAMUS-END
 check_top_level_code() {
     local first_func_line
@@ -357,11 +351,12 @@ check_top_level_code() {
 
 ## CAMUS-SL
 # intent: check that all functions are preceded by CAMUS-SL blocks
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: check result
-#   return: 0 if OK, 2 if error
+#   return[1]{code,desc}:
+#     0,"if OK, 2 if error"
 ## CAMUS-END
 check_sl_blocks_present() {
     local func_lines
@@ -392,11 +387,12 @@ check_sl_blocks_present() {
 
 ## CAMUS-SL
 # intent: check that all CAMUS-SL blocks contain an intent: declaration
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: check result
-#   return: 0 if OK, 2 if error
+#   return[1]{code,desc}:
+#     0,"if OK, 2 if error"
 ## CAMUS-END
 check_sl_intent() {
     local sl_blocks
@@ -428,11 +424,12 @@ check_sl_intent() {
 
 ## CAMUS-SL
 # intent: check that all Camus blocks are properly closed
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: check result
-#   return: 0 if OK, 2 if error
+#   return[1]{code,desc}:
+#     0,"if OK, 2 if error"
 ## CAMUS-END
 check_blocks_closed() {
     local total_end total_camus open_blocks
@@ -450,8 +447,8 @@ check_blocks_closed() {
 
 ## CAMUS-SL
 # intent: scan a file and output "name:line_count" for each function
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: "name:line_count" lines
 ## CAMUS-END
@@ -489,11 +486,12 @@ scan_func_lengths() {
 
 ## CAMUS-SL
 # intent: check that no function exceeds 50 lines (warn above 20)
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: check result per oversized function
-#   return: 0 if OK, 1 if warnings, 2 if errors
+#   return[1]{code,desc}:
+#     0,"if OK, 1 if warnings, 2 if errors"
 ## CAMUS-END
 check_function_lengths() {
     local file="$1"
@@ -518,12 +516,13 @@ check_function_lengths() {
 
 ## CAMUS-SL
 # intent: report a single function's line count against size limits
-# input:
-#   $1: function name
-#   $2: line count
+# input[2]{param,desc}:
+#   $1,function name
+#   $2,line count
 # output:
 #   stdout: warning or error message if over limit
-#   return: 0 if OK, 1 if warning, 2 if error
+#   return[1]{code,desc}:
+#     0,"if OK, 1 if warning, 2 if error"
 ## CAMUS-END
 report_func_length() {
     local name="$1" count="$2"
@@ -539,11 +538,12 @@ report_func_length() {
 
 ## CAMUS-SL
 # intent: check line lengths against limits (MUST <= 120, SHOULD <= 80)
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: check results
-#   return: 0 if OK, 1 if warnings
+#   return[1]{code,desc}:
+#     0,"if OK, 1 if warnings"
 ## CAMUS-END
 check_line_lengths() {
     local file="$1"
@@ -570,8 +570,8 @@ check_line_lengths() {
 
 ## CAMUS-SL
 # intent: list all available public keys in the key directory
-# input:
-#   $1: key directory
+# input[1]{param,desc}:
+#   $1,key directory
 ## CAMUS-END
 do_list_keys() {
     local key_dir="$1"
@@ -599,11 +599,11 @@ do_list_keys() {
 
 ## CAMUS-SL
 # intent: generate an Ed25519 self-signed certificate
-# input:
-#   $1: output key path
-#   $2: output cert path
-#   $3: password
-#   $4: validity in days
+# input[4]{param,desc}:
+#   $1,output key path
+#   $2,output cert path
+#   $3,password
+#   $4,validity in days
 ## CAMUS-END
 gen_cert() {
     local key_out="$1" cert_out="$2" password="$3" days="$4"
@@ -617,9 +617,9 @@ gen_cert() {
 
 ## CAMUS-SL
 # intent: generate an Ed25519 key pair with password-protected private key
-# input:
-#   $1: key directory
-#   $2: certificate validity in days (default: 365)
+# input[2]{param,desc}:
+#   $1,key directory
+#   $2,certificate validity in days (default: 365)
 ## CAMUS-END
 do_gen_key() {
     local key_dir="$1"
@@ -627,7 +627,7 @@ do_gen_key() {
     mkdir -p "$key_dir"
 
     local password
-    password=$(prompt_password_twice "Enter new private key password: ")
+    password=$(prompt_password_twice) || return $?
 
     local tmp_key tmp_cert
     tmp_key=$(mktemp)
@@ -662,11 +662,12 @@ do_gen_key() {
 
 ## CAMUS-SL
 # intent: check a shell script for compliance with the Camus.sh specification
-# input:
-#   $1: file path to check
+# input[1]{param,desc}:
+#   $1,file path to check
 # output:
 #   stdout: compliance report
-#   return: 0 if fully compliant, 1 if warnings, 2 if errors
+#   return[1]{code,desc}:
+#     0,"if fully compliant, 1 if warnings, 2 if errors"
 ## CAMUS-END
 do_check() {
     local file="$1"
@@ -719,12 +720,12 @@ do_check() {
 
 ## CAMUS-SL
 # intent: compute a cryptographic signature for content and format a CAMUS-SIGNATURE block
-# input:
-#   $1: private key path
-#   $2: password for private key
-#   $3: signatory name
-#   $4: timestamp (ISO 8601)
-#   $5: fingerprint (SHA256)
+# input[5]{param,desc}:
+#   $1,private key path
+#   $2,password for private key
+#   $3,signatory name
+#   $4,timestamp (ISO 8601)
+#   $5,fingerprint (SHA256)
 # output:
 #   stdout: base64-encoded signature
 ## CAMUS-END
@@ -751,13 +752,13 @@ compute_signature() {
 
 ## CAMUS-SL
 # intent: generate a whole-file signature block for text or markdown files
-# input:
-#   $1: file path
-#   $2: public key fingerprint
-#   $3: base64 signature
-#   $4: timestamp
-#   $5: signatory
-#   $6: file type ("txt" or "md")
+# input[6]{param,desc}:
+#   $1,file path
+#   $2,public key fingerprint
+#   $3,base64 signature
+#   $4,timestamp
+#   $5,signatory
+#   $6,file type ("txt" or "md")
 # output:
 #   stdout: signature block to append
 ## CAMUS-END
@@ -782,13 +783,13 @@ format_whole_signature() {
 
 ## CAMUS-SL
 # intent: sign an entire file as a single unit (for .txt and .md)
-# input:
-#   $1: file path
-#   $2: private key path
-#   $3: public key path
-#   $4: password
-#   $5: signatory
-#   $6: file type ("txt" or "md")
+# input[6]{param,desc}:
+#   $1,file path
+#   $2,private key path
+#   $3,public key path
+#   $4,password
+#   $5,signatory
+#   $6,file type ("txt" or "md")
 ## CAMUS-END
 do_sign_whole_file() {
     local file="$1" privkey="$2" pubkey="$3" password="$4"
@@ -810,11 +811,11 @@ do_sign_whole_file() {
 
 ## CAMUS-SL
 # intent: generate a CAMUS-SIGNATURE block for a shell function
-# input:
-#   $1: base64 signature
-#   $2: fingerprint
-#   $3: timestamp
-#   $4: signatory
+# input[4]{param,desc}:
+#   $1,base64 signature
+#   $2,fingerprint
+#   $3,timestamp
+#   $4,signatory
 # output:
 #   stdout: formatted CAMUS-SIGNATURE block
 ## CAMUS-END
@@ -831,9 +832,9 @@ format_func_signature_block() {
 
 ## CAMUS-SL
 # intent: find the CAMUS-SL block preceding a function definition
-# input:
-#   $1: file path
-#   $2: line number of the function definition
+# input[2]{param,desc}:
+#   $1,file path
+#   $2,line number of the function definition
 # output:
 #   stdout: the SL block content (including markers), or empty string
 ## CAMUS-END
@@ -861,11 +862,11 @@ find_sl_block() {
 
 ## CAMUS-SL
 # intent: count brace depth for a single line, respecting heredocs
-# input:
-#   $1: current depth
-#   $2: line text
-#   $3: in_heredoc flag (0 or 1)
-#   $4: heredoc delimiter
+# input[4]{param,desc}:
+#   $1,current depth
+#   $2,line text
+#   $3,in_heredoc flag (0 or 1)
+#   $4,heredoc delimiter
 # output:
 #   stdout: "new_depth in_heredoc delimiter" (space-separated)
 ## CAMUS-END
@@ -898,11 +899,10 @@ track_brace_depth() {
 
 ## CAMUS-SL
 # intent: get the body of a function (from definition to closing brace)
-# input:
-#   $1: file path
-#   $2: line number of the function definition
+# input[2]{param,desc}:
+#   $1,file path
+#   $2,line number of the function definition
 # output:
-#   stdout: function content (definition + body)
 #   stdout: end_line: the last line of the function (on last line)
 ## CAMUS-END
 get_function_body() {
@@ -939,8 +939,8 @@ get_function_body() {
 
 ## CAMUS-SL
 # intent: scan a shell script and record function start/end line ranges
-# input:
-#   $1: file path
+# input[1]{param,desc}:
+#   $1,file path
 # output:
 #   stdout: "start:end" pairs, one per line, in order
 ## CAMUS-END
@@ -979,13 +979,13 @@ scan_functions() {
 
 ## CAMUS-SL
 # intent: insert CAMUS-SIGNATURE blocks for all unsigned functions in a file
-# input:
-#   $1: file path
-#   $2: private key path
-#   $3: password
-#   $4: fingerprint
-#   $5: timestamp
-#   $6: signatory
+# input[6]{param,desc}:
+#   $1,file path
+#   $2,private key path
+#   $3,password
+#   $4,fingerprint
+#   $5,timestamp
+#   $6,signatory
 ## CAMUS-END
 insert_func_sig_blocks() {
     local file="$1" privkey="$2" password="$3"
@@ -1032,13 +1032,13 @@ insert_func_sig_blocks() {
 
 ## CAMUS-SL
 # intent: sign each unsigned function in a shell script
-# input:
-#   $1: file path
-#   $2: private key path
-#   $3: public key path
-#   $4: password
-#   $5: signatory
-#   $6: key directory (for fingerprint lookup)
+# input[6]{param,desc}:
+#   $1,file path
+#   $2,private key path
+#   $3,public key path
+#   $4,password
+#   $5,signatory
+#   $6,key directory (for fingerprint lookup)
 ## CAMUS-END
 do_sign_per_function() {
     local file="$1" privkey="$2" pubkey="$3" password="$4"
@@ -1052,16 +1052,16 @@ do_sign_per_function() {
 
 ## CAMUS-SL
 # intent: compute and append a signature block for one function
-# input:
-#   $1: file path
-#   $2: function start line
-#   $3: function end line
-#   $4: private key path
-#   $5: password
-#   $6: fingerprint
-#   $7: timestamp
-#   $8: signatory
-#   $9: temp file to append to
+# input[9]{param,desc}:
+#   $1,file path
+#   $2,function start line
+#   $3,function end line
+#   $4,private key path
+#   $5,password
+#   $6,fingerprint
+#   $7,timestamp
+#   $8,signatory
+#   $9,temp file to append to
 ## CAMUS-END
 sign_one_function() {
     local file="$1" func_s="$2" func_e="$3" privkey="$4"
@@ -1097,13 +1097,14 @@ sign_one_function() {
 
 ## CAMUS-SL
 # intent: extract and decode a signature block from a file
-# input:
-#   $1: file path
-#   $2: sig block start line (*camus-sig-1* line)
-#   $3: file type ("txt" or "md")
+# input[3]{param,desc}:
+#   $1,file path
+#   $2,sig block start line (*camus-sig-1* line)
+#   $3,file type ("txt" or "md")
 # output:
 #   stdout: "content_file sig_block_file sig_b64 fpr date" (tab-separated)
-#   return: 0 on success, 1 on failure
+#   return[1]{code,desc}:
+#     0,"on success, 1 on failure"
 ## CAMUS-END
 extract_whole_sig_info() {
     local file="$1" sig_line="$2" file_type="$3"
@@ -1138,13 +1139,14 @@ extract_whole_sig_info() {
 
 ## CAMUS-SL
 # intent: resolve public key by fingerprint or direct path
-# input:
-#   $1: fingerprint
-#   $2: explicit public key path (optional)
-#   $3: key directory for auto-detection
+# input[3]{param,desc}:
+#   $1,fingerprint
+#   $2,explicit public key path (optional)
+#   $3,key directory for auto-detection
 # output:
 #   stdout: resolved public key path
-#   return: 0 on success, 1 on failure
+#   return[1]{code,desc}:
+#     0,"on success, 1 on failure"
 ## CAMUS-END
 resolve_pubkey() {
     local stored_fpr="$1" pubkey="$2" key_dir="$3"
@@ -1163,12 +1165,13 @@ resolve_pubkey() {
 
 ## CAMUS-SL
 # intent: prepare public key for verification (extract from cert if needed)
-# input:
-#   $1: path to public key or certificate
-#   $2: date string for expiration check
+# input[2]{param,desc}:
+#   $1,path to public key or certificate
+#   $2,date string for expiration check
 # output:
 #   stdout: path to temp file with raw public key
-#   return: 0 on success, 1 on failure
+#   return[1]{code,desc}:
+#     0,"on success, 1 on failure"
 ## CAMUS-END
 prepare_pubkey() {
     local pubkey="$1" sig_date="$2"
@@ -1194,13 +1197,11 @@ prepare_pubkey() {
 
 ## CAMUS-SL
 # intent: verify a whole-file signature block
-# input:
-#   $1: file path
-#   $2: public key path (optional, auto-detect by fingerprint if omitted)
-#   $3: key directory (for auto-detection)
-#   $4: file type (txt or md, for signature offset calculation)
-# output:
-#   return 0 on valid, 1 on invalid
+# input[4]{param,desc}:
+#   $1,file path
+#   $2,"public key path (optional, auto-detect by fingerprint if omitted)"
+#   $3,key directory (for auto-detection)
+#   $4,"file type (txt or md, for signature offset calculation)"
 ## CAMUS-END
 do_verify_whole_file() {
     local file="$1" pubkey="${2:-}" key_dir="$3" file_type="$4"
@@ -1241,15 +1242,16 @@ do_verify_whole_file() {
 
 ## CAMUS-SL
 # intent: verify a base64 signature against file content with a public key
-# input:
-#   $1: path to content file
-#   $2: base64-encoded signature
-#   $3: path to raw public key file
-#   $4: signature date (for display)
-#   $5: original public key path (for display)
+# input[5]{param,desc}:
+#   $1,path to content file
+#   $2,base64-encoded signature
+#   $3,path to raw public key file
+#   $4,signature date (for display)
+#   $5,original public key path (for display)
 # output:
 #   stdout: verification result
-#   return: 0 on valid, 1 on invalid
+#   return[1]{code,desc}:
+#     0,"on valid, 1 on invalid"
 ## CAMUS-END
 verify_sig_against_content() {
     local tmp_content="$1" sig_b64="$2" tmp_pubkey="$3"
@@ -1276,9 +1278,9 @@ verify_sig_against_content() {
 
 ## CAMUS-SL
 # intent: find the function definition line preceding a signature block
-# input:
-#   $1: file path
-#   $2: line number of the CAMUS-SIGNATURE block
+# input[2]{param,desc}:
+#   $1,file path
+#   $2,line number of the CAMUS-SIGNATURE block
 # output:
 #   stdout: line number of function definition (or 0 if not found)
 ## CAMUS-END
@@ -1303,9 +1305,9 @@ find_func_def_for_sig() {
 
 ## CAMUS-SL
 # intent: extract signature metadata from a CAMUS-SIGNATURE block
-# input:
-#   $1: file path
-#   $2: line number of the CAMUS-SIGNATURE block
+# input[2]{param,desc}:
+#   $1,file path
+#   $2,line number of the CAMUS-SIGNATURE block
 # output:
 #   stdout: "sig_b64 fpr date signatory" (tab-separated) or empty on failure
 ## CAMUS-END
@@ -1335,9 +1337,9 @@ extract_func_sig_data() {
 
 ## CAMUS-SL
 # intent: reconstruct the content that was signed (SL block + function body)
-# input:
-#   $1: file path
-#   $2: function definition line
+# input[2]{param,desc}:
+#   $1,file path
+#   $2,function definition line
 # output:
 #   stdout: signed content
 ## CAMUS-END
@@ -1370,12 +1372,10 @@ reconstruct_signed_content() {
 
 ## CAMUS-SL
 # intent: verify a single CAMUS-SIGNATURE block for a specific function
-# input:
-#   $1: file path
-#   $2: line number of the CAMUS-SIGNATURE block
-#   $3: public key path
-# output:
-#   return 0 on valid, 1 on invalid
+# input[3]{param,desc}:
+#   $1,file path
+#   $2,line number of the CAMUS-SIGNATURE block
+#   $3,public key path
 ## CAMUS-END
 verify_func_signature() {
     local file="$1" sig_line="$2" pubkey="$3"
@@ -1419,12 +1419,10 @@ verify_func_signature() {
 
 ## CAMUS-SL
 # intent: verify all signatures in a Camus.sh script (per-function and whole-file)
-# input:
-#   $1: file path
-#   $2: public key path (optional)
-#   $3: key directory (for auto-detection)
-# output:
-#   return 0 if all valid, 1 otherwise
+# input[3]{param,desc}:
+#   $1,file path
+#   $2,public key path (optional)
+#   $3,key directory (for auto-detection)
 ## CAMUS-END
 do_verify() {
     local file="$1" pubkey="${2:-}" key_dir="$3"
@@ -1447,11 +1445,9 @@ do_verify() {
 
 ## CAMUS-SL
 # intent: verify per-function CAMUS-SIGNATURE blocks in a script
-# input:
-#   $1: file path
-#   $2: public key path (optional)
-# output:
-#   return 0 if all valid, 1 otherwise
+# input[2]{param,desc}:
+#   $1,file path
+#   $2,public key path (optional)
 ## CAMUS-END
 verify_per_function_sigs() {
     local file="$1" pubkey="$2"
@@ -1482,14 +1478,14 @@ verify_per_function_sigs() {
 
 ## CAMUS-SL
 # intent: sign a single file, dispatching to per-function or whole-file mode
-# input:
-#   $1: file path
-#   $2: private key path
-#   $3: public key path
-#   $4: password
-#   $5: signatory
-#   $6: force file type (empty for auto-detect)
-#   $7: key directory
+# input[7]{param,desc}:
+#   $1,file path
+#   $2,private key path
+#   $3,public key path
+#   $4,password
+#   $5,signatory
+#   $6,force file type (empty for auto-detect)
+#   $7,key directory
 ## CAMUS-END
 do_sign_file() {
     local file="$1" privkey="$2" pubkey="$3" password="$4" signatory="$5"
@@ -1528,28 +1524,29 @@ do_sign_file() {
 
 ## CAMUS-SL
 # intent: check if a key is expired and print appropriate warning
-# input:
-#   $1: path to public key or certificate
+# input[1]{param,desc}:
+#   $1,path to public key or certificate
 # output:
 #   stdout: remaining days info
-#   return: 0 if valid, exits if expired
+#   return[1]{code,desc}:
+#     6,"key expired"
 ## CAMUS-END
 check_key_expiry() {
     local pubkey="$1"
     local key_remaining
     key_remaining=$(key_expiry_info "$pubkey") || {
         echo -e "\033[31mError: key expired $((-key_remaining)) day(s) ago.\033[0m" >&2
-        exit 1
+        return 6
     }
     echo "$key_remaining"
 }
 
 ## CAMUS-SL
 # intent: interactively prompt user to approve or skip a file for signing
-# input:
-#   $1: file index (1-based)
-#   $2: total files
-#   $3: file path
+# input[3]{param,desc}:
+#   $1,file index (1-based)
+#   $2,total files
+#   $3,file path
 # output:
 #   stdout: the file path if approved, empty string if skipped
 ## CAMUS-END
@@ -1587,13 +1584,12 @@ review_one_file() {
 
 ## CAMUS-SL
 # intent: review and sign multiple files interactively
-# input:
-#   $1: private key path
-#   $2: public key path
-#   $3: signatory
-#   $4: force file type (empty for auto-detect)
-#   $5: key directory
-#   $@: files to sign
+# input[5]{param,desc}:
+#   $1,private key path
+#   $2,public key path
+#   $3,signatory
+#   $4,force file type (empty for auto-detect)
+#   $5,key directory
 ## CAMUS-END
 do_sign_files() {
     local privkey="$1" pubkey="$2" signatory="$3" force_type="$4" key_dir="$5"
@@ -1604,7 +1600,7 @@ do_sign_files() {
     local i
 
     local key_remaining
-    key_remaining=$(check_key_expiry "$pubkey")
+    key_remaining=$(check_key_expiry "$pubkey") || return $?
 
     echo "Reviewing ${#files[@]} file(s) for signing." >&2
     echo >&2
@@ -1620,7 +1616,7 @@ do_sign_files() {
     fi
 
     local password
-    password=$(prompt_password "Enter private key password: ")
+    password=$(prompt_password "Enter private key password: ") || return $?
 
     for file in "${approved[@]}"; do
         do_sign_file "$file" "$privkey" "$pubkey" "$password" \
@@ -1632,8 +1628,8 @@ do_sign_files() {
 
 ## CAMUS-SL
 # intent: print a color-coded key expiry warning
-# input:
-#   $1: remaining days
+# input[1]{param,desc}:
+#   $1,remaining days
 # output:
 #   stdout: warning message
 ## CAMUS-END
@@ -1652,9 +1648,8 @@ print_key_expiry_warning() {
 
 ## CAMUS-SL
 # intent: handle the init subcommand argument parsing and dispatch
-# input:
-#   $1: default key directory
-#   $@: remaining arguments
+# input[1]{param,desc}:
+#   $1,default key directory
 ## CAMUS-END
 cmd_init() {
     local key_dir="$1"; shift
@@ -1665,7 +1660,7 @@ cmd_init() {
             --days) shift; days="$1" ;;
             *)
                 echo "Error: unknown option: $1" >&2
-                usage
+                usage; exit 1
                 ;;
         esac
         shift
@@ -1675,48 +1670,46 @@ cmd_init() {
 
 ## CAMUS-SL
 # intent: handle the check subcommand
-# input:
-#   $@: arguments
 ## CAMUS-END
 cmd_check() {
-    [ $# -lt 1 ] && usage
+    [ $# -ge 1 ] || { usage; exit 1; }
     do_check "$1"
 }
 
 ## CAMUS-SL
 # intent: handle the sign subcommand argument parsing and dispatch
-# input:
-#   $1: default key directory
-#   $@: remaining arguments
+# input[1]{param,desc}:
+#   $1,default key directory
 ## CAMUS-END
 cmd_sign() {
     local key_dir="$1"; shift
-    local force_type="" pubkey=""
+    local force_type=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --txt|--text) force_type="txt"; shift ;;
             --md|--markdown) force_type="md"; shift ;;
-            --pubkey) shift; pubkey="$1"; shift ;;
             --key-dir) shift; key_dir="$1"; shift ;;
             --signatory) shift; SIGNATORY="$1"; shift ;;
             *) break ;;
         esac
     done
-    [ $# -lt 1 ] && usage
+    [ $# -lt 1 ] && { usage; exit 1; }
 
-    if [ -z "$pubkey" ]; then
-        pubkey="${key_dir}/public.pem"
-    fi
     local privkey="${key_dir}/private.pem"
 
     if [ ! -f "$privkey" ]; then
         echo "Error: private key not found at ${privkey}. Run init first." >&2
         exit 1
     fi
-    if [ ! -f "$pubkey" ]; then
-        echo "Error: public key not found at ${pubkey}." >&2
+
+    local pubkey
+    pubkey=$(openssl pkey -in "$privkey" -pubout 2>/dev/null) || {
+        echo "Error: unable to read private key." >&2
         exit 1
-    fi
+    }
+    local tmp_pubkey
+    tmp_pubkey=$(mktemp)
+    echo "$pubkey" > "$tmp_pubkey"
 
     local signatory="${SIGNATORY:-}"
     if [ -z "$signatory" ]; then
@@ -1727,15 +1720,16 @@ cmd_sign() {
         fi
     fi
 
-    do_sign_files "$privkey" "$pubkey" "$signatory" \
+    do_sign_files "$privkey" "$tmp_pubkey" "$signatory" \
         "$force_type" "$key_dir" "$@"
+    rm -f "$tmp_pubkey"
 }
 
 ## CAMUS-SL
 # intent: handle the verify subcommand argument parsing and dispatch
-# input:
-#   $1: default key directory
-#   $2: remaining arguments
+# input[2]{param,desc}:
+#   $1,default key directory
+#   $2,remaining arguments
 ## CAMUS-END
 cmd_verify() {
     local key_dir="$1"; shift
@@ -1748,7 +1742,7 @@ cmd_verify() {
         esac
         shift
     done
-    [ $# -lt 1 ] && usage
+    [ $# -ge 1 ] || { usage; exit 1; }
 
     if [ -z "$pubkey" ]; then
         pubkey="${key_dir}/public.pem"
@@ -1762,9 +1756,8 @@ cmd_verify() {
 
 ## CAMUS-SL
 # intent: handle the list-keys subcommand
-# input:
-#   $1: default key directory
-#   $@: remaining arguments
+# input[1]{param,desc}:
+#   $1,default key directory
 ## CAMUS-END
 cmd_list_keys() {
     local key_dir="$1"; shift
@@ -1773,7 +1766,7 @@ cmd_list_keys() {
             --key-dir) shift; key_dir="$1" ;;
             *)
                 echo "Error: unknown option: $1" >&2
-                usage
+                usage; exit 1
                 ;;
         esac
         shift
@@ -1785,17 +1778,15 @@ cmd_list_keys() {
 
 ## CAMUS-SL
 # intent: parse arguments and dispatch to the appropriate subcommand
-# input:
-#   $@: command-line arguments
 ## CAMUS-END
 main() {
     if [ $# -eq 0 ]; then
         usage
+        exit 1
     fi
 
-    local script_dir key_dir cmd
-    script_dir=$(kiss_dir)
-    key_dir="${script_dir}/.secrets"
+    local key_dir cmd
+    key_dir="${CAMUS_KEY_PATH:-$HOME/.config/camus}"
 
     cmd="$1"
     shift
@@ -1810,8 +1801,10 @@ main() {
         *)
             echo "Error: unknown command: $cmd" >&2
             usage
+            exit 1
             ;;
     esac
 }
 
 main "$@"
+
