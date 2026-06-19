@@ -28,7 +28,7 @@ When writing or reviewing shell scripts under this profile:
 - Every script MUST define a `main()` function and end with `main "$@"`
 - Executable statements MUST NOT appear at top level
 - Functions MUST use POSIX syntax: `name() { ... }` (no `function` keyword)
-- Every function MUST be preceded by a `## CAMUS-SL` block declaring `intent:`; `input:` and `output:` present only when applicable
+- Every function MUST be preceded by a `## CAMUS-SL` block declaring `intent:`; `input:` (TOON table format `input[N]{param,desc[,default]}:`) and `output:` present only when applicable
 - Functions MUST NOT exceed 50 lines (SHOULD NOT exceed 20)
 - Lines MUST NOT exceed 120 characters (SHOULD NOT exceed 80)
 - Functions are the primary unit of review and attestation

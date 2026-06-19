@@ -169,8 +169,8 @@ assume responsibility for the function's correctness.
 
 ## CAMUS-SL
 # intent: <what this function does>
-# input:
-#   $1: <description>
+# input[1]{param,desc}:
+#   $1,<description>
 # output:
 #   <description>
 ## CAMUS-END
@@ -187,8 +187,8 @@ main "$@"
 ```sh
 ## CAMUS-SL
 # intent: <what this function does>
-# input:
-#   $<n>: <description>
+# input[1]{param,desc}:
+#   $<n>,<description>
 # output:
 #   <description>
 ## CAMUS-END

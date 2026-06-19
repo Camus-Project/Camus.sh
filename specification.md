@@ -159,7 +159,7 @@ indentation).
 The following keys are defined:
 
 - `intent:` — REQUIRED. Describes what the function does.
-- `input:` — OPTIONAL. Present only if the function takes inputs.
+- `input[N]{param,desc[,default]}:` — OPTIONAL. Present only if the function takes inputs. Uses TOON table format.
 - `output:` — OPTIONAL. Present only if the function produces output.
 
 Example with inputs and outputs:
@@ -167,9 +167,9 @@ Example with inputs and outputs:
 ```sh
 ## CAMUS-SL
 # intent: compute the sum of two numbers
-# input:
-#   $1: augend (integer)
-#   $2: addend (integer)
+# input[2]{param,desc}:
+#   $1,augend (integer)
+#   $2,addend (integer)
 # output:
 #   stdout: sum of augend and addend
 ## CAMUS-END
