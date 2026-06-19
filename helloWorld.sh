@@ -6,8 +6,8 @@
 
 ## CAMUS-SL
 # intent: print "Hello" followed by message on the screen (standard output)
-# input:
-#   $1: message (optional, default: world)
+# input[1]{param,desc,default}:
+#   $1,message,world
 # output:
 #   print: Hello message
 ## CAMUS-END
