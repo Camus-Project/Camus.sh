@@ -1315,7 +1315,7 @@ extract_func_sig_data() {
     local file="$1" sig_line="$2"
     local sig_block
     sig_block=$(sed -n "${sig_line},\$p" "$file" \
-        | sed -n '/^## CAMUS-SIGNATURE$/,/^## CAMUS-END$/p')
+        | sed -n '/^## CAMUS-SIGNATURE$/,/^## CAMUS-END$/{p;/^## CAMUS-END$/q}')
 
     local sig_b64 stored_fpr stored_date signatory
     sig_b64=$(echo "$sig_block" | grep '^# signature: ' \
@@ -1365,7 +1365,6 @@ reconstruct_signed_content() {
 
     if [ -n "$sl_block" ]; then
         echo "${sl_block}"
-        echo ""
     fi
     echo "${func_content}"
 }
@@ -1542,88 +1541,259 @@ check_key_expiry() {
 }
 
 ## CAMUS-SL
-# intent: interactively prompt user to approve or skip a file for signing
-# input[3]{param,desc}:
-#   $1,file index (1-based)
-#   $2,total files
-#   $3,file path
+# intent: collect signable elements and interactively review them for approval
+# input[1]{param,desc}:
+#   $1,temp file path for approved elements
+#   $@,files and directories to sign
 # output:
-#   stdout: the file path if approved, empty string if skipped
+#   return[1]{code,desc}:
+#     0,"on approval, 1 if no signables found, 2 if none approved"
 ## CAMUS-END
-review_one_file() {
-    local idx="$1" total="$2" file="$3"
+collect_signables_interactive() {
+    local outfile="$1"; shift
+    local all_elements=()
+    while IFS= read -r elem; do
+        all_elements+=("$elem")
+    done < <(collect_signables "$@")
+    [ ${#all_elements[@]} -eq 0 ] && { echo "No signable files found." >&2; return 1; }
+
+    local total=${#all_elements[@]}
+    for ((i = 0; i < total; i++)); do
+        local elem="${all_elements[$i]}"
+        local elem_type elem_file elem_start elem_end elem_name
+        IFS='|' read -r elem_type elem_file elem_start elem_end elem_name <<< "$elem"
+        review_element "$elem_type" "$elem_file" "$elem_start" "$elem_end" \
+            "$elem_name" "$((i+1))" "$total"
+        case $? in
+            0) echo "$elem" >> "$outfile" ;;
+            2) break ;;
+        esac
+    done
+    [ ! -s "$outfile" ] && { echo "No elements approved for signing." >&2; return 2; }
+    return 0
+}
+
+## CAMUS-SL
+# intent: sign approved elements grouped by file
+# input[5]{param,desc}:
+#   $1,approved elements file (type|file|start|end|name per line)
+#   $2,private key path
+#   $3,public key path
+#   $4,password
+#   $5,signatory
+## CAMUS-END
+sign_approved_elements() {
+    local approved_file="$1" privkey="$2" pubkey="$3" password="$4" signatory="$5"
+    declare -A file_funcs file_types
+
+    while IFS='|' read -r elem_type elem_file elem_start elem_end elem_name; do
+        case "$elem_type" in
+            func)
+                if [ -z "${file_funcs[$elem_file]+x}" ]; then
+                    file_funcs["$elem_file"]="${elem_start}:${elem_end}"
+                else
+                    file_funcs["$elem_file"]+=$'\n'"${elem_start}:${elem_end}"
+                fi
+                file_types["$elem_file"]="sh"
+                ;;
+            whole)
+                file_funcs["$elem_file"]=""
+                file_types["$elem_file"]="$(detect_file_type "$elem_file")"
+                ;;
+        esac
+    done < "$approved_file"
+
+    for elem_file in "${!file_funcs[@]}"; do
+        case "${file_types[$elem_file]}" in
+            sh)
+                sign_selected_functions "$elem_file" "$privkey" "$pubkey" \
+                    "$password" "$signatory" "${file_funcs[$elem_file]}"
+                ;;
+            txt|md|unknown)
+                do_sign_whole_file "$elem_file" "$privkey" "$pubkey" \
+                    "$password" "$signatory" "${file_types[$elem_file]}"
+                ;;
+        esac
+    done
+}
+
+## CAMUS-SL
+# intent: collect signable elements from files and directories
+# input[1]{param,desc}:
+#   $@,files and directories
+# output:
+#   stdout: "type|file|start|end|name" lines (type: func or whole)
+## CAMUS-END
+collect_signables() {
+    local items=()
+    for arg in "$@"; do
+        if [ -d "$arg" ]; then
+            while IFS= read -r f; do
+                items+=("$f")
+            done < <(find "$arg" -type f \( -name '*.sh' -o -name '*.md' -o -name '*.txt' \) | sort)
+        elif [ -f "$arg" ]; then
+            items+=("$arg")
+        else
+            echo "[${idx}/${total}] Not found: ${arg}" >&2
+        fi
+    done
+    local item file_type func_name
+    for item in "${items[@]}"; do
+        file_type=$(detect_file_type "$item")
+        case "$file_type" in
+            sh)
+                while IFS=: read -r func_s func_e; do
+                    func_name=$(sed -n "${func_s}p" "$item" | sed 's/() {.*//')
+                    echo "func|${item}|${func_s}|${func_e}|${func_name}"
+                done < <(scan_functions "$item")
+                ;;
+            txt|md|unknown)
+                echo "whole|${item}|||"
+                ;;
+        esac
+    done
+}
+
+## CAMUS-SL
+# intent: display a signable element and ask for approval
+# input[7]{param,desc}:
+#   $1,element type (func or whole)
+#   $2,file path
+#   $3,function start line
+#   $4,function end line
+#   $5,function name
+#   $6,element index (1-based)
+#   $7,total elements
+# output:
+#   return: 0 approved, 1 refused, 2 interrupt
+## CAMUS-END
+review_element() {
+    local elem_type="$1" file="$2" start="$3" end="$4" name="$5" idx="$6" total="$7"
     local PAGER="${PAGER:-less}"
     local answer
 
     if [ ! -f "$file" ]; then
-        echo "[${idx}/${total}] Skipping (not found): ${file}" >&2
-        echo ""; return
+        echo "[${idx}/${total}] Not found: ${file}" >&2
+        return 1
     fi
 
-    if grep -qs '^\*camus-sig-1\*$' "$file"; then
-        echo "[${idx}/${total}] Skipping (already signed): ${file}" >&2
-        echo ""; return
-    fi
-
-    echo "[${idx}/${total}] --- ${file} ---" >&2
-    "$PAGER" "$file" 2>/dev/null || cat "$file"
-    echo >&2
-    read -r -p "Sign this file? [y/N] " answer
-    echo >&2
-    case "${answer,,}" in
-        y|yes)
-            echo "  Approved." >&2
-            echo "$file"
+    echo "[${idx}/${total}] --- ${file}" >&2
+    case "$elem_type" in
+        func)
+            echo "         Function: ${name} (lines ${start}-${end})" >&2
+            sed -n "${start},${end}p" "$file" | "$PAGER" 2>/dev/null || sed -n "${start},${end}p" "$file"
             ;;
-        *)
-            echo "  Skipped." >&2
-            echo ""
+        whole)
+            "$PAGER" "$file" 2>/dev/null || cat "$file"
             ;;
     esac
+    echo >&2
+
+    while true; do
+        read -r -p "[${idx}/${total}] Sign? [y/n/i(interrupt)] " answer
+        echo >&2
+        case "${answer,,}" in
+            y|yes) return 0 ;;
+            n|no) return 1 ;;
+            i|interrupt) return 2 ;;
+        esac
+    done
 }
 
 ## CAMUS-SL
-# intent: review and sign multiple files interactively
-# input[5]{param,desc}:
-#   $1,private key path
-#   $2,public key path
-#   $3,signatory
-#   $4,force file type (empty for auto-detect)
-#   $5,key directory
+# intent: sign one function and insert its signature block into a temp file
+# input[10]{param,desc}:
+#   $1,file path
+#   $2,function start line
+#   $3,function end line
+#   $4,private key path
+#   $5,password
+#   $6,fingerprint
+#   $7,timestamp
+#   $8,signatory
+#   $9,output temp file path
+#   $10,SL content (pre-extracted)
 ## CAMUS-END
-do_sign_files() {
-    local privkey="$1" pubkey="$2" signatory="$3" force_type="$4" key_dir="$5"
-    shift 5
-    local files=("$@")
-    local approved=()
-    local file result
-    local i
+sign_one_func_to_temp() {
+    local file="$1" func_s="$2" func_e="$3" privkey="$4"
+    local password="$5" fpr="$6" timestamp="$7" signatory="$8"
+    local temp_file="$9" sl_content="${10}"
 
-    local key_remaining
-    key_remaining=$(check_key_expiry "$pubkey") || return $?
+    local func_body
+    func_body=$(sed -n "${func_s},${func_e}p" "$file")
 
-    echo "Reviewing ${#files[@]} file(s) for signing." >&2
-    echo >&2
-
-    for ((i = 0; i < ${#files[@]}; i++)); do
-        file="${files[$i]}"
-        result=$(review_one_file "$((i+1))" "${#files[@]}" "$file")
-        [ -n "$result" ] && approved+=("$result")
-    done
-
-    if [ ${#approved[@]} -eq 0 ]; then
-        echo "No files to sign." >&2; exit 0
+    local sign_content
+    if [ -n "$sl_content" ]; then
+        sign_content="${sl_content}"$'\n'"${func_body}"
+    else
+        sign_content="${func_body}"
     fi
 
-    local password
-    password=$(prompt_password "Enter private key password: ") || return $?
+    local sig_b64
+    sig_b64=$(compute_signature "$privkey" "$password" "$sign_content")
+    local sig_block
+    sig_block=$(format_func_signature_block "$sig_b64" "$fpr" "$timestamp" "$signatory")
+    echo "$sig_block" >> "$temp_file"
+}
 
-    for file in "${approved[@]}"; do
-        do_sign_file "$file" "$privkey" "$pubkey" "$password" \
-            "$signatory" "$force_type" "$key_dir"
-    done
+## CAMUS-SL
+# intent: sign selected functions in a .sh file in one pass
+# input[6]{param,desc}:
+#   $1,file path
+#   $2,private key path
+#   $3,public key path
+#   $4,password
+#   $5,signatory
+#   $6,newline-separated "start:end" ranges to sign
+## CAMUS-END
+sign_selected_functions() {
+    local file="$1" privkey="$2" pubkey="$3" password="$4" signatory="$5"
+    local ranges_str="$6"
 
-    print_key_expiry_warning "$key_remaining"
+    local timestamp fpr; timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ"); fpr=$(fingerprint_of "$pubkey")
+
+    local temp_file
+    temp_file=$(mktemp)
+    local line_num=0 in_sig=0 idx=0
+    local -a end_lines func_starts sl_blocks
+    local range
+
+    while IFS= read -r range; do
+        [ -z "$range" ] && continue
+        end_lines+=("${range##*:}")
+        func_starts+=("${range%%:*}")
+        # pre-extract SL block for each function
+        local sl_start
+        sl_start=$(sed -n '1,'"${range%%:*}"'p' "$file" \
+            | grep -n '^## CAMUS-SL$' | tail -1 | cut -d: -f1 || true)
+        if [ -n "$sl_start" ]; then
+            sl_blocks+=("$(sed -n "${sl_start},/^## CAMUS-END\$/p" "$file" 2>/dev/null || true)")
+        else
+            sl_blocks+=("")
+        fi
+    done <<< "$ranges_str"
+
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+        if [ "$in_sig" -eq 1 ]; then
+            echo "$line" | grep -q '^## CAMUS-END$' && in_sig=0
+            continue
+        fi
+        if echo "$line" | grep -q '^## CAMUS-SIGNATURE$'; then
+            in_sig=1
+            continue
+        fi
+        echo "$line" >> "$temp_file"
+        if [ "$idx" -lt "${#end_lines[@]}" ] && [ "$line_num" -eq "${end_lines[$idx]}" ]; then
+            sign_one_func_to_temp "$file" "${func_starts[$idx]}" "${end_lines[$idx]}" \
+                "$privkey" "$password" "$fpr" "$timestamp" "$signatory" \
+                "$temp_file" "${sl_blocks[$idx]}"
+            idx=$((idx + 1))
+        fi
+    done < "$file"
+
+    mv "$temp_file" "$file"
+    echo "Signed ${idx} function(s) in ${file}" >&2
 }
 
 ## CAMUS-SL
@@ -1677,52 +1847,47 @@ cmd_check() {
 }
 
 ## CAMUS-SL
-# intent: handle the sign subcommand argument parsing and dispatch
+# intent: handle the sign subcommand — collect, review, then sign elements
 # input[1]{param,desc}:
 #   $1,default key directory
 ## CAMUS-END
 cmd_sign() {
     local key_dir="$1"; shift
-    local force_type=""
+    local signatory=""
+
     while [ $# -gt 0 ]; do
         case "$1" in
-            --txt|--text) force_type="txt"; shift ;;
-            --md|--markdown) force_type="md"; shift ;;
             --key-dir) shift; key_dir="$1"; shift ;;
-            --signatory) shift; SIGNATORY="$1"; shift ;;
+            --signatory) shift; signatory="$1"; shift ;;
             *) break ;;
         esac
     done
     [ $# -lt 1 ] && { usage; exit 1; }
 
-    local privkey="${key_dir}/private.pem"
+    local temp_approved; temp_approved=$(mktemp)
+    collect_signables_interactive "$temp_approved" "$@" || { rm -f "$temp_approved"; exit 0; }
 
-    if [ ! -f "$privkey" ]; then
-        echo "Error: private key not found at ${privkey}. Run init first." >&2
-        exit 1
-    fi
+    local privkey="${key_dir}/private.pem" pubkey="${key_dir}/public.pem"
+    [ ! -f "$privkey" ] && { echo "Error: private key not found." >&2; rm -f "$temp_approved"; exit 4; }
+    [ ! -f "$pubkey" ] && { echo "Error: public key not found." >&2; rm -f "$temp_approved"; exit 4; }
 
-    local pubkey
-    pubkey=$(openssl pkey -in "$privkey" -pubout 2>/dev/null) || {
-        echo "Error: unable to read private key." >&2
-        exit 1
-    }
-    local tmp_pubkey
-    tmp_pubkey=$(mktemp)
-    echo "$pubkey" > "$tmp_pubkey"
-
-    local signatory="${SIGNATORY:-}"
-    if [ -z "$signatory" ]; then
+    [ -z "$signatory" ] && {
         read -r -p "Signatory name: " signatory
-        if [ -z "$signatory" ]; then
-            echo "Error: signatory cannot be empty." >&2
-            exit 1
-        fi
-    fi
+        [ -z "$signatory" ] && { echo "Error: signatory cannot be empty." >&2; rm -f "$temp_approved"; exit 5; }
+    }
 
-    do_sign_files "$privkey" "$tmp_pubkey" "$signatory" \
-        "$force_type" "$key_dir" "$@"
-    rm -f "$tmp_pubkey"
+    local key_remaining; key_remaining=$(check_key_expiry "$pubkey") || { rm -f "$temp_approved"; exit 6; }
+
+    local password=""
+    while true; do
+        password=$(prompt_password "Enter private key password: ") || continue
+        openssl pkey -in "$privkey" -passin "pass:${password}" -noout 2>/dev/null && break
+        echo "Incorrect password, try again." >&2
+    done
+
+    sign_approved_elements "$temp_approved" "$privkey" "$pubkey" "$password" "$signatory"
+    rm -f "$temp_approved"
+    print_key_expiry_warning "$key_remaining"
 }
 
 ## CAMUS-SL
@@ -1807,4 +1972,3 @@ main() {
 }
 
 main "$@"
-
