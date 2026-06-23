@@ -38,6 +38,12 @@ Verify options:
   --key-dir <path>    Key storage directory (default: ~/.config/camus)
 EOF
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-23T15:46:31Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: SOJ3DmtglBgVAY6+S+EveiaLp5uJPnCj8xAqCh8daTcrQi9WZm+sq6nO8G8IwgjGkqF74DCKtP7guZepHBxACQ==
+## CAMUS-END
 
 
 
@@ -66,6 +72,12 @@ prompt_password() {
     fi
     echo "$password"
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-23T15:46:31Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: DBSHN8yilzH1MW8iiBsPI2F8yrECCvsXDmY7StbK5LHIUF4+tztv3ju0xti2afVacBXrdHiNw+4IozpuyPLbCQ==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: prompt the user for a password twice to confirm
@@ -85,6 +97,12 @@ prompt_password_twice() {
     fi
     echo "$p1"
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-23T15:46:31Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: Zm8p2gq7BI9Ps1CmmegsVFKi6307SJ/X19VmGVAhw83jD3x9r8TEMtwAzZ+Sf8CjIUZujhBBhb/UtfZu4hz5CQ==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: compute the SHA256 fingerprint of a certificate or public key
@@ -114,6 +132,12 @@ fingerprint_of() {
 fingerprint_filepath() {
     echo "$1" | tr -d ' :'
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-23T15:46:31Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: lT70FCrRf6zNTlau8e+xxNN7ALttGou7jLK9bkudN2USakWQ+hYgLgJaQY5wPrtkL4Z//WviaPH4yrPsvClYCA==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: find a public key file by its fingerprint
@@ -140,6 +164,12 @@ find_key_by_fingerprint() {
     fi
     return 1
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-23T15:46:31Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: DKPQhX5I3Zr8eAZXFSPcWGWXi5/i1S+Ltq2rlRo0p0uCMeDPqlLp4ZL4zPgBPiiI8XfB7JKHI73ecGYTz40eDw==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check certificate expiration status at a given date
@@ -194,6 +224,12 @@ key_expiry_info() {
 extract_pubkey_from_cert() {
     openssl x509 -in "$1" -noout -pubkey 2>/dev/null
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-23T15:46:31Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: oGt40Q7ksm0181AKaFCrba42SXZgERe6e1sJxCnS+KJacYXSIytDJRHol8q8lPgNtbqLN0oA8Q1gM9HZd647Ag==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: detect file type for signing mode
@@ -211,6 +247,12 @@ detect_file_type() {
         *) echo "unknown" ;;
     esac
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-23T15:46:31Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: eNS9DFe36vFwDj6eklLdzztsntyg1BR8rmoHcmc+Gf5uh1UHMyGG0TnCuDsqtheR9ouuHX9ZD/Fi7QnRPzy4Cw==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check if a file already has a camus-sig-1 marker
@@ -221,6 +263,12 @@ is_signed() {
     local file="$1"
     grep -qs '^\*camus-sig-1\*$' "$file"
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-23T15:46:31Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: bJHzPwWp+qcP2EEJnB/kpM3LCErES5vpTJJDWIfiEE6PMsgUv5vnP4PdKFZ6peVE24yNSrZXmPqZtXARPb9vAg==
+## CAMUS-END
 
 ## --- Check helpers ---
 
@@ -242,6 +290,12 @@ check_shebang() {
         return 2
     fi
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-23T15:46:31Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: ne5uWQqMQ2Krd1f2nBkE8lnHF0+xqkhYJ9GVsZU648z0RgjLamqEdgj5XjLhBZEOQugfA5XyiJ0jjCuqQVq2Bg==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check that a script has a CAMUS-LEXICON block
@@ -975,6 +1029,10 @@ scan_functions() {
             fi
         fi
     done < "$file"
+
+    chmod --reference="$file" "$temp_file" 2>/dev/null || true
+    mv "$temp_file" "$file"
+    echo "Signed ${idx} function(s) in ${file}" >&2
 }
 
 ## CAMUS-SL
@@ -1026,9 +1084,11 @@ insert_func_sig_blocks() {
         fi
     done < "$file"
 
+    chmod --reference="$file" "$temp_file" 2>/dev/null || true
     mv "$temp_file" "$file"
     echo "Signed ${idx} function(s) in ${file}" >&2
 }
+
 
 ## CAMUS-SL
 # intent: sign each unsigned function in a shell script
@@ -1681,7 +1741,13 @@ review_element() {
     case "$elem_type" in
         func)
             echo "         Function: ${name} (lines ${start}-${end})" >&2
-            sed -n "${start},${end}p" "$file" | "$PAGER" 2>/dev/null || sed -n "${start},${end}p" "$file"
+            local sl_block
+            sl_block=$(find_sl_block "$file" "$start" || true)
+            local tmp_display; tmp_display=$(mktemp)
+            [ -n "$sl_block" ] && echo "$sl_block" >> "$tmp_display"
+            sed -n "${start},${end}p" "$file" >> "$tmp_display"
+            "$PAGER" "$tmp_display" 2>/dev/null || cat "$tmp_display"
+            rm -f "$tmp_display"
             ;;
         whole)
             "$PAGER" "$file" 2>/dev/null || cat "$file"
