@@ -28,8 +28,6 @@ Commands:
   list-keys  [--key-dir <path>]               List available public keys
 
 Sign options:
-  --txt, --text       Force whole-file text mode (--- separator)
-  --md, --markdown    Force whole-file markdown mode (--- + <pre>)
   --key-dir <path>    Key storage directory (default: ~/.config/camus)
   --signatory <name>  Signatory name (optional, prompts if absent)
 
@@ -40,12 +38,10 @@ EOF
 }
 ## CAMUS-SIGNATURE
 # signatory: Lan Jing
-# date: 2026-06-23T15:46:31Z
+# date: 2026-06-25T13:45:27Z
 # fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
-# signature: SOJ3DmtglBgVAY6+S+EveiaLp5uJPnCj8xAqCh8daTcrQi9WZm+sq6nO8G8IwgjGkqF74DCKtP7guZepHBxACQ==
+# signature: ycSGWFWJTrvrQUWpeFJyY6QAISEqqrW5oHFkBfziXI7ovTbDVgDm5O2Ard/D7fjWSIOu247YvzLq3KhHWqMKAw==
 ## CAMUS-END
-
-
 
 ## CAMUS-SL
 # intent: prompt the user for a password (hidden input)
@@ -72,12 +68,6 @@ prompt_password() {
     fi
     echo "$password"
 }
-## CAMUS-SIGNATURE
-# signatory: Lan Jing
-# date: 2026-06-23T15:46:31Z
-# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
-# signature: DBSHN8yilzH1MW8iiBsPI2F8yrECCvsXDmY7StbK5LHIUF4+tztv3ju0xti2afVacBXrdHiNw+4IozpuyPLbCQ==
-## CAMUS-END
 
 ## CAMUS-SL
 # intent: prompt the user for a password twice to confirm
@@ -97,12 +87,6 @@ prompt_password_twice() {
     fi
     echo "$p1"
 }
-## CAMUS-SIGNATURE
-# signatory: Lan Jing
-# date: 2026-06-23T15:46:31Z
-# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
-# signature: Zm8p2gq7BI9Ps1CmmegsVFKi6307SJ/X19VmGVAhw83jD3x9r8TEMtwAzZ+Sf8CjIUZujhBBhb/UtfZu4hz5CQ==
-## CAMUS-END
 
 ## CAMUS-SL
 # intent: compute the SHA256 fingerprint of a certificate or public key
@@ -132,12 +116,6 @@ fingerprint_of() {
 fingerprint_filepath() {
     echo "$1" | tr -d ' :'
 }
-## CAMUS-SIGNATURE
-# signatory: Lan Jing
-# date: 2026-06-23T15:46:31Z
-# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
-# signature: lT70FCrRf6zNTlau8e+xxNN7ALttGou7jLK9bkudN2USakWQ+hYgLgJaQY5wPrtkL4Z//WviaPH4yrPsvClYCA==
-## CAMUS-END
 
 ## CAMUS-SL
 # intent: find a public key file by its fingerprint
@@ -164,12 +142,6 @@ find_key_by_fingerprint() {
     fi
     return 1
 }
-## CAMUS-SIGNATURE
-# signatory: Lan Jing
-# date: 2026-06-23T15:46:31Z
-# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
-# signature: DKPQhX5I3Zr8eAZXFSPcWGWXi5/i1S+Ltq2rlRo0p0uCMeDPqlLp4ZL4zPgBPiiI8XfB7JKHI73ecGYTz40eDw==
-## CAMUS-END
 
 ## CAMUS-SL
 # intent: check certificate expiration status at a given date
@@ -224,12 +196,6 @@ key_expiry_info() {
 extract_pubkey_from_cert() {
     openssl x509 -in "$1" -noout -pubkey 2>/dev/null
 }
-## CAMUS-SIGNATURE
-# signatory: Lan Jing
-# date: 2026-06-23T15:46:31Z
-# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
-# signature: oGt40Q7ksm0181AKaFCrba42SXZgERe6e1sJxCnS+KJacYXSIytDJRHol8q8lPgNtbqLN0oA8Q1gM9HZd647Ag==
-## CAMUS-END
 
 ## CAMUS-SL
 # intent: detect file type for signing mode
@@ -247,12 +213,6 @@ detect_file_type() {
         *) echo "unknown" ;;
     esac
 }
-## CAMUS-SIGNATURE
-# signatory: Lan Jing
-# date: 2026-06-23T15:46:31Z
-# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
-# signature: eNS9DFe36vFwDj6eklLdzztsntyg1BR8rmoHcmc+Gf5uh1UHMyGG0TnCuDsqtheR9ouuHX9ZD/Fi7QnRPzy4Cw==
-## CAMUS-END
 
 ## CAMUS-SL
 # intent: check if a file already has a camus-sig-1 marker
@@ -261,14 +221,8 @@ detect_file_type() {
 ## CAMUS-END
 is_signed() {
     local file="$1"
-    grep -qs '^\*camus-sig-1\*$' "$file"
+    grep -q '^\*camus-sig-1\*$' "$file"
 }
-## CAMUS-SIGNATURE
-# signatory: Lan Jing
-# date: 2026-06-23T15:46:31Z
-# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
-# signature: bJHzPwWp+qcP2EEJnB/kpM3LCErES5vpTJJDWIfiEE6PMsgUv5vnP4PdKFZ6peVE24yNSrZXmPqZtXARPb9vAg==
-## CAMUS-END
 
 ## --- Check helpers ---
 
@@ -278,8 +232,9 @@ is_signed() {
 #   $1,file path
 # output:
 #   stdout: check result
-#   return[1]{code,desc}:
-#     0,"if OK, 2 if error"
+#   return[2]{code,desc}:
+#     0,"shebang line is present"
+#     2,"shebang line is missing"
 ## CAMUS-END
 check_shebang() {
     if head -1 "$1" | grep -q '^#!' 2>/dev/null; then
@@ -292,9 +247,9 @@ check_shebang() {
 }
 ## CAMUS-SIGNATURE
 # signatory: Lan Jing
-# date: 2026-06-23T15:46:31Z
+# date: 2026-06-25T13:45:27Z
 # fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
-# signature: ne5uWQqMQ2Krd1f2nBkE8lnHF0+xqkhYJ9GVsZU648z0RgjLamqEdgj5XjLhBZEOQugfA5XyiJ0jjCuqQVq2Bg==
+# signature: wG6R10K2kI6cuEIG9DSf5EnqF3w/eKa2UlxfQ5nENLbxyb6P8EzaZAtYYRU0Yc6L7G7UX4RmnoS8WYFhpTWOCA==
 ## CAMUS-END
 
 ## CAMUS-SL
@@ -303,11 +258,12 @@ check_shebang() {
 #   $1,file path
 # output:
 #   stdout: check result
-#   return[1]{code,desc}:
-#     0,"if OK, 1 if warning"
+#   return[2]{code,desc}:
+#     0,"CAMUS-LEXICON block is present"
+#     1,"CAMUS-LEXICON block is missing"
 ## CAMUS-END
 check_lexicon_block() {
-    if grep -qs '^## CAMUS-LEXICON$' "$1"; then
+    if grep -q '^## CAMUS-LEXICON$' "$1"; then
         echo "  [OK] CAMUS-LEXICON block present"
         return 0
     else
@@ -322,11 +278,12 @@ check_lexicon_block() {
 #   $1,file path
 # output:
 #   stdout: check result
-#   return[1]{code,desc}:
-#     0,"if OK, 2 if error"
+#   return[2]{code,desc}:
+#     0,"only POSIX function syntax used"
+#     2,"'function' keyword used, violating Camus.sh grammar"
 ## CAMUS-END
 check_no_function_keyword() {
-    if grep -qs '^function ' "$1"; then
+    if grep -q '^function ' "$1"; then
         echo "  [ERROR] 'function' keyword used (MUST use name() {} syntax)"
         return 2
     else
@@ -341,11 +298,12 @@ check_no_function_keyword() {
 #   $1,file path
 # output:
 #   stdout: check result
-#   return[1]{code,desc}:
-#     0,"if OK, 2 if error"
+#   return[2]{code,desc}:
+#     0,"main() function is defined"
+#     2,"main() function is not defined"
 ## CAMUS-END
 check_main_defined() {
-    if grep -qs '^main()' "$1" || grep -qs '^main ()' "$1"; then
+    if grep -q '^main()' "$1" || grep -q '^main ()' "$1"; then
         echo "  [OK] main() defined"
         return 0
     else
@@ -360,8 +318,9 @@ check_main_defined() {
 #   $1,file path
 # output:
 #   stdout: check result
-#   return[1]{code,desc}:
-#     0,"if OK, 2 if error"
+#   return[2]{code,desc}:
+#     0,"script ends with main \"$@\""
+#     2,"script does not end with main \"$@\""
 ## CAMUS-END
 check_main_call() {
     if tail -1 "$1" | grep -q '^main "\$@"$' 2>/dev/null; then
@@ -382,8 +341,9 @@ check_main_call() {
 #   $1,file path
 # output:
 #   stdout: check result
-#   return[1]{code,desc}:
-#     0,"if OK, 2 if error"
+#   return[2]{code,desc}:
+#     0,"no executable code outside function definitions"
+#     2,"executable statements found at top level"
 ## CAMUS-END
 check_top_level_code() {
     local first_func_line
@@ -409,8 +369,9 @@ check_top_level_code() {
 #   $1,file path
 # output:
 #   stdout: check result
-#   return[1]{code,desc}:
-#     0,"if OK, 2 if error"
+#   return[2]{code,desc}:
+#     0,"all functions have a preceding CAMUS-SL block"
+#     2,"at least one function is missing a CAMUS-SL block"
 ## CAMUS-END
 check_sl_blocks_present() {
     local func_lines
@@ -445,8 +406,9 @@ check_sl_blocks_present() {
 #   $1,file path
 # output:
 #   stdout: check result
-#   return[1]{code,desc}:
-#     0,"if OK, 2 if error"
+#   return[2]{code,desc}:
+#     0,"all CAMUS-SL blocks declare an intent field"
+#     2,"at least one CAMUS-SL block is missing intent"
 ## CAMUS-END
 check_sl_intent() {
     local sl_blocks
@@ -464,7 +426,7 @@ check_sl_intent() {
         end_line=$((line_num + end_line - 1))
         local block_content
         block_content=$(sed -n "$((line_num + 1)),$((end_line - 1))p" "$1" 2>/dev/null)
-        if ! echo "$block_content" | grep -qs '# intent:'; then
+        if ! echo "$block_content" | grep -q '# intent:'; then
             echo "  [ERROR] CAMUS-SL block at line ${line_num} missing 'intent:'"
             missing_intent=$((missing_intent + 1))
         fi
@@ -482,8 +444,9 @@ check_sl_intent() {
 #   $1,file path
 # output:
 #   stdout: check result
-#   return[1]{code,desc}:
-#     0,"if OK, 2 if error"
+#   return[2]{code,desc}:
+#     0,"all Camus blocks are properly closed"
+#     2,"at least one Camus block has no matching ## CAMUS-END"
 ## CAMUS-END
 check_blocks_closed() {
     local total_end total_camus open_blocks
@@ -544,8 +507,10 @@ scan_func_lengths() {
 #   $1,file path
 # output:
 #   stdout: check result per oversized function
-#   return[1]{code,desc}:
-#     0,"if OK, 1 if warnings, 2 if errors"
+#   return[3]{code,desc}:
+#     0,"all functions within size limits"
+#     1,"at least one function exceeds SHOULD limit of 20 lines"
+#     2,"at least one function exceeds MUST limit of 50 lines"
 ## CAMUS-END
 check_function_lengths() {
     local file="$1"
@@ -575,8 +540,10 @@ check_function_lengths() {
 #   $2,line count
 # output:
 #   stdout: warning or error message if over limit
-#   return[1]{code,desc}:
-#     0,"if OK, 1 if warning, 2 if error"
+#   return[3]{code,desc}:
+#     0,"function is within size limits"
+#     1,"function exceeds SHOULD limit of 20 lines"
+#     2,"function exceeds MUST limit of 50 lines"
 ## CAMUS-END
 report_func_length() {
     local name="$1" count="$2"
@@ -596,8 +563,9 @@ report_func_length() {
 #   $1,file path
 # output:
 #   stdout: check results
-#   return[1]{code,desc}:
-#     0,"if OK, 1 if warnings"
+#   return[2]{code,desc}:
+#     0,"all lines within length limits"
+#     1,"at least one line exceeds length limits"
 ## CAMUS-END
 check_line_lengths() {
     local file="$1"
@@ -720,8 +688,10 @@ do_gen_key() {
 #   $1,file path to check
 # output:
 #   stdout: compliance report
-#   return[1]{code,desc}:
-#     0,"if fully compliant, 1 if warnings, 2 if errors"
+#   return[3]{code,desc}:
+#     0,"file passes all checks"
+#     1,"all MUST checks pass, at least one SHOULD warning"
+#     2,"at least one MUST check fails"
 ## CAMUS-END
 do_check() {
     local file="$1"
@@ -744,15 +714,15 @@ do_check() {
         [ "$rc" -eq 2 ] && errors=$((errors + 1))
     done
 
-    check_function_lengths "$file"
-    rc=$?
-    [ "$rc" -eq 2 ] && errors=$((errors + 1))
-    [ "$rc" -eq 1 ] && warnings=$((warnings + 1))
+    local fl_result; fl_result=$(check_function_lengths "$file"); rc=$?
+    echo "$fl_result"
+    errors=$((errors + $(echo "$fl_result" | grep -c '\[ERROR\]' || true)))
+    warnings=$((warnings + $(echo "$fl_result" | grep -c '\[WARN\]' || true)))
 
-    check_line_lengths "$file"
-    rc=$?
-    [ "$rc" -eq 2 ] && errors=$((errors + 1))
-    [ "$rc" -eq 1 ] && warnings=$((warnings + 1))
+    local ll_result; ll_result=$(check_line_lengths "$file"); rc=$?
+    echo "$ll_result"
+    errors=$((errors + $(echo "$ll_result" | grep -c '\[ERROR\]' || true)))
+    warnings=$((warnings + $(echo "$ll_result" | grep -c '\[WARN\]' || true)))
 
     echo ""
     if [ "$errors" -gt 0 ] && [ "$warnings" -gt 0 ]; then
@@ -771,6 +741,95 @@ do_check() {
 }
 
 ## --- Sign helpers ---
+
+## CAMUS-SL
+# intent: remove stale signature blocks whose cryptographic verification fails
+# input[2]{param,desc}:
+#   $1,file path
+#   $2,public key path
+# output:
+#   side-effect: modifies file in-place if stale signatures are purged
+## CAMUS-END
+purge_invalid_signatures() {
+    local file="$1" pubkey="$2"
+    [ ! -f "$pubkey" ] && return 0
+    local my_fpr; my_fpr=$(fingerprint_of "$pubkey")
+    local temp_file; temp_file=$(mktemp)
+    local line_num=0 in_sig=0 sig_start=0 changed=false
+    local -a sig_lines=()
+
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+        if [ "$in_sig" -eq 0 ] && echo "$line" | grep -q '^## CAMUS-SIGNATURE$'; then
+            in_sig=1; sig_start=$line_num
+            sig_lines=("$line"); continue
+        fi
+        if [ "$in_sig" -eq 1 ]; then
+            sig_lines+=("$line")
+            if echo "$line" | grep -q '^## CAMUS-END$'; then
+                in_sig=0
+                local stored_fpr
+                stored_fpr=$(printf '%s\n' "${sig_lines[@]}" \
+                    | grep '^# fingerprint: ' | sed 's/^# fingerprint: sha256://')
+                local keep_block=true
+                if [ -n "$stored_fpr" ] && [ "$stored_fpr" = "$my_fpr" ]; then
+                    local func_def
+                    func_def=$(find_func_def_for_sig "$file" "$sig_start")
+                    if [ "$func_def" -gt 0 ]; then
+                        if ! verify_func_signature "$file" "$sig_start" \
+                            "$pubkey" >/dev/null 2>&1; then
+                            keep_block=false; changed=true
+                        fi
+                    fi
+                fi
+                if [ "$keep_block" = true ]; then
+                    printf '%s\n' "${sig_lines[@]}" >> "$temp_file"
+                fi
+            fi
+            continue
+        fi
+        echo "$line" >> "$temp_file"
+    done < "$file"
+
+    if [ "$changed" = true ]; then
+        chmod --reference="$file" "$temp_file" 2>/dev/null || true
+        mv "$temp_file" "$file"
+    else
+        rm -f "$temp_file"
+    fi
+}
+
+## CAMUS-SL
+# intent: check whether a function already has a valid signature by a specific signatory
+# input[4]{param,desc}:
+#   $1,file path
+#   $2,function end line
+#   $3,signatory name
+#   $4,key fingerprint
+# output:
+#   return[2]{code,desc}:
+#     0,"function is signed by the given signatory and key"
+#     1,"function is not signed by the given signatory and key"
+## CAMUS-END
+is_function_signed_by_me() {
+    local file="$1" func_end="$2" signatory="$3" fingerprint="$4"
+    local check_line=$((func_end + 1))
+    local total_lines; total_lines=$(wc -l < "$file")
+    while [ "$check_line" -le "$total_lines" ]; do
+        local line; line=$(sed -n "${check_line}p" "$file")
+        [ -z "$line" ] && { check_line=$((check_line + 1)); continue; }
+        break
+    done
+    [ "$check_line" -gt "$total_lines" ] && return 1
+    echo "$line" | grep -q '^## CAMUS-SIGNATURE$' || return 1
+
+    local sig_data
+    sig_data=$(extract_func_sig_data "$file" "$check_line") || return 1
+    local stored_fpr stored_signatory
+    stored_fpr=$(echo "$sig_data" | cut -d'|' -f2)
+    stored_signatory=$(echo "$sig_data" | cut -d'|' -f4)
+    [ "$stored_signatory" = "$signatory" ] && [ "$stored_fpr" = "$fingerprint" ]
+}
 
 ## CAMUS-SL
 # intent: compute a cryptographic signature for content and format a CAMUS-SIGNATURE block
@@ -1163,8 +1222,9 @@ sign_one_function() {
 #   $3,file type ("txt" or "md")
 # output:
 #   stdout: "content_file sig_block_file sig_b64 fpr date" (tab-separated)
-#   return[1]{code,desc}:
-#     0,"on success, 1 on failure"
+#   return[2]{code,desc}:
+#     0,"signature information extracted successfully"
+#     1,"malformed or missing signature block"
 ## CAMUS-END
 extract_whole_sig_info() {
     local file="$1" sig_line="$2" file_type="$3"
@@ -1205,8 +1265,9 @@ extract_whole_sig_info() {
 #   $3,key directory for auto-detection
 # output:
 #   stdout: resolved public key path
-#   return[1]{code,desc}:
-#     0,"on success, 1 on failure"
+#   return[2]{code,desc}:
+#     0,"public key resolved successfully"
+#     1,"could not locate a matching public key"
 ## CAMUS-END
 resolve_pubkey() {
     local stored_fpr="$1" pubkey="$2" key_dir="$3"
@@ -1230,8 +1291,9 @@ resolve_pubkey() {
 #   $2,date string for expiration check
 # output:
 #   stdout: path to temp file with raw public key
-#   return[1]{code,desc}:
-#     0,"on success, 1 on failure"
+#   return[2]{code,desc}:
+#     0,"public key prepared for verification"
+#     1,"key was already expired at signature date"
 ## CAMUS-END
 prepare_pubkey() {
     local pubkey="$1" sig_date="$2"
@@ -1310,8 +1372,9 @@ do_verify_whole_file() {
 #   $5,original public key path (for display)
 # output:
 #   stdout: verification result
-#   return[1]{code,desc}:
-#     0,"on valid, 1 on invalid"
+#   return[2]{code,desc}:
+#     0,"signature matches content"
+#     1,"signature does not match content"
 ## CAMUS-END
 verify_sig_against_content() {
     local tmp_content="$1" sig_b64="$2" tmp_pubkey="$3"
@@ -1493,7 +1556,7 @@ do_verify() {
     local file_type
     file_type=$(detect_file_type "$file")
 
-    if grep -qs '^\*camus-sig-1\*$' "$file"; then
+    if grep -q '^\*camus-sig-1\*$' "$file"; then
         echo "Verifying whole-file signature: ${file}"
         do_verify_whole_file "$file" "$pubkey" "$key_dir" "$file_type"
         return $?
@@ -1587,8 +1650,9 @@ do_sign_file() {
 #   $1,path to public key or certificate
 # output:
 #   stdout: remaining days info
-#   return[1]{code,desc}:
-#     6,"key expired"
+#   return[2]{code,desc}:
+#     0,"key is still valid"
+#     6,"key has expired"
 ## CAMUS-END
 check_key_expiry() {
     local pubkey="$1"
@@ -1601,20 +1665,35 @@ check_key_expiry() {
 }
 
 ## CAMUS-SL
-# intent: collect signable elements and interactively review them for approval
-# input[1]{param,desc}:
+# intent: collect signable elements, filter already-signed by me, interactively review
+# input[3]{param,desc}:
 #   $1,temp file path for approved elements
+#   $2,signatory name (for filtering)
+#   $3,key fingerprint (for filtering)
 #   $@,files and directories to sign
 # output:
-#   return[1]{code,desc}:
-#     0,"on approval, 1 if no signables found, 2 if none approved"
+#   return[3]{code,desc}:
+#     0,"at least one element was approved for signing"
+#     1,"no signable files found in the provided paths"
+#     2,"no elements were approved during interactive review"
 ## CAMUS-END
 collect_signables_interactive() {
-    local outfile="$1"; shift
+    local outfile="$1" signatory="$2" fingerprint="$3"; shift 3
     local all_elements=()
+
     while IFS= read -r elem; do
+        if [ -n "$signatory" ] && [ -n "$fingerprint" ]; then
+            local elem_type elem_file elem_start elem_end elem_name
+            IFS='|' read -r elem_type elem_file elem_start elem_end elem_name <<< "$elem"
+            if [ "$elem_type" = "func" ] && \
+                is_function_signed_by_me "$elem_file" "$elem_end" "$signatory" "$fingerprint"; then
+                echo "Skipping (already signed by ${signatory}): ${elem_name} in ${elem_file}" >&2
+                continue
+            fi
+        fi
         all_elements+=("$elem")
     done < <(collect_signables "$@")
+
     [ ${#all_elements[@]} -eq 0 ] && { echo "No signable files found." >&2; return 1; }
 
     local total=${#all_elements[@]}
@@ -1803,6 +1882,53 @@ sign_one_func_to_temp() {
 }
 
 ## CAMUS-SL
+# intent: initialize per-function range data arrays from a ranges string
+# input[5]{param,desc}:
+#   $1,file path
+#   $2,newline-separated "start:end" ranges
+#   $3,end_lines array name (nameref)
+#   $4,func_starts array name (nameref)
+#   $5,sl_blocks array name (nameref)
+## CAMUS-END
+init_sign_range_data() {
+    local file="$1" ranges_str="$2"
+    local -n _ends="$3" _starts="$4" _sls="$5"
+    local range sl_start
+    while IFS= read -r range; do
+        [ -z "$range" ] && continue
+        _ends+=("${range##*:}")
+        _starts+=("${range%%:*}")
+        sl_start=$(sed -n '1,'"${range%%:*}"'p' "$file" \
+            | grep -n '^## CAMUS-SL$' | tail -1 | cut -d: -f1 || true)
+        if [ -n "$sl_start" ]; then
+            _sls+=("$(sed -n "${sl_start},/^## CAMUS-END\$/p" "$file" 2>/dev/null || true)")
+        else
+            _sls+=("")
+        fi
+    done <<< "$ranges_str"
+}
+
+## CAMUS-SL
+# intent: check if a signature block belongs to a function being signed this pass
+# input[1]{param,desc}:
+#   $1,line number of ## CAMUS-SIGNATURE
+# output:
+#   return[1]{code,desc}:
+#     0,belongs to a signed function
+#     1,does not belong
+## CAMUS-END
+sig_belongs_to_signed() {
+    local line_num="$1"; shift
+    local end
+    for end in "$@"; do
+        [ "$((line_num - 1))" -eq "$end" ] && return 0
+        [ "$((line_num - 2))" -eq "$end" ] && return 0
+        [ "$((line_num - 3))" -eq "$end" ] && return 0
+    done
+    return 1
+}
+
+## CAMUS-SL
 # intent: sign selected functions in a .sh file in one pass
 # input[6]{param,desc}:
 #   $1,file path
@@ -1817,27 +1943,11 @@ sign_selected_functions() {
     local ranges_str="$6"
 
     local timestamp fpr; timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ"); fpr=$(fingerprint_of "$pubkey")
-
-    local temp_file
-    temp_file=$(mktemp)
+    local temp_file; temp_file=$(mktemp)
     local line_num=0 in_sig=0 idx=0
     local -a end_lines func_starts sl_blocks
-    local range
 
-    while IFS= read -r range; do
-        [ -z "$range" ] && continue
-        end_lines+=("${range##*:}")
-        func_starts+=("${range%%:*}")
-        # pre-extract SL block for each function
-        local sl_start
-        sl_start=$(sed -n '1,'"${range%%:*}"'p' "$file" \
-            | grep -n '^## CAMUS-SL$' | tail -1 | cut -d: -f1 || true)
-        if [ -n "$sl_start" ]; then
-            sl_blocks+=("$(sed -n "${sl_start},/^## CAMUS-END\$/p" "$file" 2>/dev/null || true)")
-        else
-            sl_blocks+=("")
-        fi
-    done <<< "$ranges_str"
+    init_sign_range_data "$file" "$ranges_str" end_lines func_starts sl_blocks
 
     while IFS= read -r line; do
         line_num=$((line_num + 1))
@@ -1846,7 +1956,10 @@ sign_selected_functions() {
             continue
         fi
         if echo "$line" | grep -q '^## CAMUS-SIGNATURE$'; then
-            in_sig=1
+            if sig_belongs_to_signed "$line_num" "${end_lines[@]}"; then
+                in_sig=1; continue
+            fi
+            echo "$line" >> "$temp_file"
             continue
         fi
         echo "$line" >> "$temp_file"
@@ -1858,6 +1971,7 @@ sign_selected_functions() {
         fi
     done < "$file"
 
+    chmod --reference="$file" "$temp_file" 2>/dev/null || true
     mv "$temp_file" "$file"
     echo "Signed ${idx} function(s) in ${file}" >&2
 }
@@ -1913,14 +2027,31 @@ cmd_check() {
 }
 
 ## CAMUS-SL
-# intent: handle the sign subcommand — collect, review, then sign elements
+# intent: expand file and directory arguments into a list of signable files
+# input[1]{param,desc}:
+#   $@,files or directories to expand
+# output:
+#   stdout: one file path per line (.sh, .md, .txt)
+## CAMUS-END
+collect_sign_files() {
+    for arg in "$@"; do
+        if [ -d "$arg" ]; then
+            find "$arg" -type f \( -name '*.sh' -o -name '*.md' -o -name '*.txt' \) | sort
+        elif [ -f "$arg" ]; then
+            echo "$arg"
+        else
+            echo "Warning: not found: ${arg}" >&2
+        fi
+    done
+}
+
+## CAMUS-SL
+# intent: handle the sign subcommand — purge, check, collect, review, then sign
 # input[1]{param,desc}:
 #   $1,default key directory
 ## CAMUS-END
 cmd_sign() {
-    local key_dir="$1"; shift
-    local signatory=""
-
+    local key_dir="$1"; shift; local signatory=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --key-dir) shift; key_dir="$1"; shift ;;
@@ -1930,24 +2061,31 @@ cmd_sign() {
     done
     [ $# -lt 1 ] && { usage; exit 1; }
 
-    local temp_approved; temp_approved=$(mktemp)
-    collect_signables_interactive "$temp_approved" "$@" || { rm -f "$temp_approved"; exit 0; }
-
     local privkey="${key_dir}/private.pem" pubkey="${key_dir}/public.pem"
-    [ ! -f "$privkey" ] && { echo "Error: private key not found." >&2; rm -f "$temp_approved"; exit 4; }
-    [ ! -f "$pubkey" ] && { echo "Error: public key not found." >&2; rm -f "$temp_approved"; exit 4; }
+    [ ! -f "$privkey" ] && { echo "Error: private key not found." >&2; exit 4; }
+    [ ! -f "$pubkey" ] && { echo "Error: public key not found." >&2; exit 4; }
 
-    [ -z "$signatory" ] && {
-        read -r -p "Signatory name: " signatory
-        [ -z "$signatory" ] && { echo "Error: signatory cannot be empty." >&2; rm -f "$temp_approved"; exit 5; }
-    }
+    local fpr; fpr=$(fingerprint_of "$pubkey")
+    [ -z "$signatory" ] && read -r -p "Signatory name: " signatory
+    [ -z "$signatory" ] && { echo "Error: signatory cannot be empty." >&2; exit 5; }
+    local key_remaining; key_remaining=$(check_key_expiry "$pubkey") || exit 6
 
-    local key_remaining; key_remaining=$(check_key_expiry "$pubkey") || { rm -f "$temp_approved"; exit 6; }
+    local files=()
+    while IFS= read -r f; do files+=("$f"); done < <(collect_sign_files "$@")
+    for f in "${files[@]}"; do purge_invalid_signatures "$f" "$pubkey"; done
+    for f in "${files[@]}"; do
+        [ "$(detect_file_type "$f")" != "sh" ] && continue
+        echo "--- Running check on ${f} ---" >&2
+        do_check "$f"; [ $? -eq 2 ] && { echo "Error: check failed. Aborting." >&2; exit 2; }
+    done
+
+    local temp_approved; temp_approved=$(mktemp)
+    collect_signables_interactive "$temp_approved" "$signatory" "$fpr" \
+        "${files[@]}" || { rm -f "$temp_approved"; exit 0; }
 
     local password=""
-    while true; do
-        password=$(prompt_password "Enter private key password: ") || continue
-        openssl pkey -in "$privkey" -passin "pass:${password}" -noout 2>/dev/null && break
+    while ! password=$(prompt_password "Enter private key password: ") \
+        || ! openssl pkey -in "$privkey" -passin "pass:${password}" -noout 2>/dev/null; do
         echo "Incorrect password, try again." >&2
     done
 
