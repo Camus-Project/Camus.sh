@@ -161,6 +161,9 @@ The following keys are defined:
 - `intent:` — REQUIRED. Describes what the function does.
 - `input[N]{param,desc[,default]}:` — OPTIONAL. Present only if the function takes inputs. Uses TOON table format.
 - `output:` — OPTIONAL. Present only if the function produces output.
+- `return[N]{code,desc}:` — OPTIONAL. Present only if the function returns non-zero
+  exit codes. Uses TOON table format. The `code` field MAY be `*` to indicate that
+  the return code originates from a called function and is propagated forward.
 
 Example with inputs and outputs:
 
@@ -186,6 +189,24 @@ Example with no inputs or outputs:
 ## CAMUS-END
 print_banner() {
     echo "=== My App v1.0 ==="
+}
+```
+
+Example with return codes (wildcard for propagated errors):
+
+```sh
+## CAMUS-SL
+# intent: prompt the user for a password twice to confirm
+# output:
+#   stdout: the confirmed password
+#   return[2]{code,desc}:
+#     *,"propagated from prompt_password"
+#     3,"passwords do not match"
+## CAMUS-END
+prompt_password_twice() {
+    local p1 p2
+    p1=$(prompt_password "Enter password: ") || return $?
+    ...
 }
 ```
 

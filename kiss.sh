@@ -68,13 +68,19 @@ prompt_password() {
     fi
     echo "$password"
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-26T16:10:00Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: DBSHN8yilzH1MW8iiBsPI2F8yrECCvsXDmY7StbK5LHIUF4+tztv3ju0xti2afVacBXrdHiNw+4IozpuyPLbCQ==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: prompt the user for a password twice to confirm
 # output:
 #   stdout: the confirmed password
 #   return[2]{code,desc}:
-#     2,"empty password"
+#     *,"propagated from prompt_password"
 #     3,"passwords do not match"
 ## CAMUS-END
 prompt_password_twice() {
@@ -87,6 +93,12 @@ prompt_password_twice() {
     fi
     echo "$p1"
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-26T16:32:27Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: qum9pl8gIOjDyhjPEQ7c16MEVgSOu3WJKh/KSTyMqYxkH5MJ4PggRN1l/6e/YfZjdFvMQznZzipcLpCpYBw6Bg==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: compute the SHA256 fingerprint of a certificate or public key
@@ -116,6 +128,12 @@ fingerprint_of() {
 fingerprint_filepath() {
     echo "$1" | tr -d ' :'
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-26T16:32:27Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: lT70FCrRf6zNTlau8e+xxNN7ALttGou7jLK9bkudN2USakWQ+hYgLgJaQY5wPrtkL4Z//WviaPH4yrPsvClYCA==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: find a public key file by its fingerprint
@@ -187,17 +205,6 @@ key_expiry_info() {
 }
 
 ## CAMUS-SL
-# intent: extract raw public key from an X.509 certificate
-# input[1]{param,desc}:
-#   $1,path to certificate
-# output:
-#   stdout: PEM-encoded public key
-## CAMUS-END
-extract_pubkey_from_cert() {
-    openssl x509 -in "$1" -noout -pubkey 2>/dev/null
-}
-
-## CAMUS-SL
 # intent: detect file type for signing mode
 # input[1]{param,desc}:
 #   $1,file path
@@ -205,24 +212,40 @@ extract_pubkey_from_cert() {
 #   stdout: "sh", "txt", "md", or "unknown"
 ## CAMUS-END
 detect_file_type() {
-    local file="$1"
-    case "${file,,}" in
+    local file="$1" lower
+    lower=$(echo "$file" | tr '[:upper:]' '[:lower:]')
+    case "$lower" in
         *.sh) echo "sh" ;;
         *.txt) echo "txt" ;;
         *.md|*.markdown) echo "md" ;;
         *) echo "unknown" ;;
     esac
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-26T16:45:14Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: txcWBRyH6Puc4rQG2LZj55cVE3qgkItFzrAjtiHARX+5sJKveZstzEqOBcYB0CIj7Q0S9t8Zl0OoeBjwtV3zBQ==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check if a file already has a camus-sig-1 marker
 # input[1]{param,desc}:
 #   $1,file path
+# output:
+#   return[1]{code,desc}:
+#     *,"propagated from grep -q"
 ## CAMUS-END
 is_signed() {
     local file="$1"
     grep -q '^\*camus-sig-1\*$' "$file"
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-26T16:51:39Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: xQDYsxwRcmygOAkAP740odTBlM/iCxfYm8oQugOt5mNVfCx/nTCMrL5DS3RlycSddymWd/Ojtixj73BuQNM0Dw==
+## CAMUS-END
 
 ## --- Check helpers ---
 
@@ -271,6 +294,12 @@ check_lexicon_block() {
         return 1
     fi
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-26T16:51:39Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: tp3mPLxferscofgOPUd3N/j0H6e+y7XbKHNSeQpYxQPBiHeJZ0/k3ZWv00wN31FSng1knmIeDBLjyzWLS8JlDA==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check that no 'function' keyword is used
@@ -291,6 +320,12 @@ check_no_function_keyword() {
         return 0
     fi
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-26T16:51:39Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: NDC5QXWUmCbrQ73oDAlEwzBRM+Y3Aua2sd2Y2VqVzjGXSG+o0urMTw8cVwPYwGOfPxkWHDT9PgjrzBOWuPk8AQ==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check that main() is defined
@@ -642,6 +677,9 @@ gen_cert() {
 # input[2]{param,desc}:
 #   $1,key directory
 #   $2,certificate validity in days (default: 365)
+# output:
+#   return[1]{code,desc}:
+#     *,"propagated from prompt_password_twice"
 ## CAMUS-END
 do_gen_key() {
     local key_dir="$1"
@@ -1310,7 +1348,7 @@ prepare_pubkey() {
             rm -f "$tmp_pubkey"
             return 1
         fi
-        extract_pubkey_from_cert "$pubkey" > "$tmp_pubkey"
+        openssl x509 -in "$pubkey" -noout -pubkey > "$tmp_pubkey" 2>/dev/null
     else
         cat "$pubkey" > "$tmp_pubkey"
     fi
