@@ -11,6 +11,43 @@
 #   plus its CAMUS-SL block
 ## CAMUS-END
 
+# --- Error code constants ---
+# I_ (0-49): boolean / information
+readonly I_FALSE=1
+# W_ (50-99): SHOULD warnings
+readonly W_LEXICON_MISSING=50
+readonly W_FUNC_SHOULD=51
+readonly W_LINE_SHOULD=52
+readonly W_COMPLIANCE_ONLY=53
+# E_ (100-255): MUST errors
+readonly E_EMPTY_PASSWORD=100
+readonly E_PASSWORDS_MISMATCH=101
+readonly E_KEY_NOT_FOUND=102
+readonly E_SIGNATORY_EMPTY=103
+readonly E_KEY_EXPIRED=104
+readonly E_FILE_NOT_FOUND=105
+readonly E_KEY_INVALID_AT_DATE=106
+readonly E_CERT_PARSE_FAILED=107
+readonly E_NO_SIGNATURE=108
+readonly E_MALFORMED_SIG=109
+readonly E_INVALID_SIG=110
+readonly E_NO_FUNC_DEF_FOR_SIG=111
+readonly E_NO_SIGNABLES=112
+readonly E_NO_APPROVALS=113
+readonly E_UNKNOWN_OPTION=114
+readonly E_MISSING_ARG=115
+readonly E_NO_SHEBANG=116
+readonly E_FUNCTION_KEYWORD=117
+readonly E_NO_MAIN=118
+readonly E_NO_MAIN_CALL=119
+readonly E_TOP_LEVEL_CODE=120
+readonly E_NO_INTENT=121
+readonly E_UNCLOSED_BLOCK=122
+readonly E_FUNC_EXCEEDS_LIMIT=123
+readonly E_LINE_EXCEEDS_LIMIT=124
+readonly E_CHECK_FAILED=125
+readonly E_NO_SL_BLOCK=126
+
 ## CAMUS-SL
 # intent: print usage information
 # output:
@@ -44,13 +81,56 @@ EOF
 ## CAMUS-END
 
 ## CAMUS-SL
+# intent: check that a file exists and exit with E_FILE_NOT_FOUND if not
+# input[2]{param,desc}:
+#   $1,file path
+#   $2,label for error message (defaults to file path)
+# output:
+#   return[1]{code,desc}:
+#     0,"file exists"
+#     105,"file not found"
+## CAMUS-END
+assert_file_exists() {
+    local file="$1" label="${2:-$1}"
+    [ -f "$file" ] && return 0
+    echo "Error: file not found: ${label}" >&2
+    return $E_FILE_NOT_FOUND
+}
+
+## CAMUS-SL
+# intent: print an unknown option error and exit
+# input[1]{param,desc}:
+#   $1,the unknown option string
+# output:
+#   stderr: error message
+#   exit[1]{code,desc}:
+#     114,E_UNKNOWN_OPTION
+## CAMUS-END
+die_unknown_option() {
+    echo "Error: unknown option: $1" >&2
+    usage; exit $E_UNKNOWN_OPTION
+}
+
+## CAMUS-SL
+# intent: print a missing argument error and exit
+# input[0]{param,desc}:
+# output:
+#   stderr: error message
+#   exit[1]{code,desc}:
+#     115,E_MISSING_ARG
+## CAMUS-END
+die_missing_arg() {
+    usage; exit $E_MISSING_ARG
+}
+
+## CAMUS-SL
 # intent: prompt the user for a password (hidden input)
 # input[1]{param,desc,default}:
 #   $1,prompt message,"Enter password: "
 # output:
 #   stdout: the entered password
 #   return[1]{code,desc}:
-#     2,"empty password"
+#     E_EMPTY_PASSWORD,"empty password"
 ## CAMUS-END
 prompt_password() {
     local prompt="${1:-Enter password: }"
@@ -64,7 +144,7 @@ prompt_password() {
     echo >&2
     if [ -z "$password" ]; then
         echo "Error: password cannot be empty." >&2
-        return 2
+        return $E_EMPTY_PASSWORD
     fi
     echo "$password"
 }
@@ -89,7 +169,7 @@ prompt_password_twice() {
     p2=$(prompt_password "Confirm password: ")
     if [ "$p1" != "$p2" ]; then
         echo "Error: passwords do not match." >&2
-        return 3
+        return $E_PASSWORDS_MISMATCH
     fi
     echo "$p1"
 }
@@ -158,7 +238,7 @@ find_key_by_fingerprint() {
         echo "$candidate"
         return 0
     fi
-    return 1
+    return $I_FALSE
 }
 
 ## CAMUS-SL
@@ -181,7 +261,7 @@ cert_valid_at() {
     if [ "$sig_epoch" -le "$cert_epoch" ] 2>/dev/null; then
         return 0
     fi
-    return 1
+    return $I_FALSE
 }
 
 ## CAMUS-SL
@@ -195,9 +275,9 @@ key_expiry_info() {
     local cert="$1"
     local end_date
     end_date=$(openssl x509 -in "$cert" -noout -enddate 2>/dev/null \
-        | cut -d= -f2) || { echo ""; return 1; }
+        | cut -d= -f2) || { echo ""; return $E_CERT_PARSE_FAILED; }
     local end_epoch now_epoch
-    end_epoch=$(date -d "$end_date" +%s 2>/dev/null) || { echo ""; return 1; }
+    end_epoch=$(date -d "$end_date" +%s 2>/dev/null) || { echo ""; return $E_CERT_PARSE_FAILED; }
     now_epoch=$(date +%s)
     local remaining=$(( (end_epoch - now_epoch) / 86400 ))
     echo "$remaining"
@@ -257,7 +337,7 @@ is_signed() {
 #   stdout: check result
 #   return[2]{code,desc}:
 #     0,"shebang line is present"
-#     2,"shebang line is missing"
+#     E_NO_SHEBANG,"shebang line is missing"
 ## CAMUS-END
 check_shebang() {
     if head -1 "$1" | grep -q '^#!' 2>/dev/null; then
@@ -265,7 +345,7 @@ check_shebang() {
         return 0
     else
         echo "  [ERROR] No shebang found (MUST start with #!)"
-        return 2
+        return $E_NO_SHEBANG
     fi
 }
 ## CAMUS-SIGNATURE
@@ -291,7 +371,7 @@ check_lexicon_block() {
         return 0
     else
         echo "  [WARN] No CAMUS-LEXICON block (SHOULD define project terms)"
-        return 1
+        return $W_LEXICON_MISSING
     fi
 }
 ## CAMUS-SIGNATURE
@@ -314,7 +394,7 @@ check_lexicon_block() {
 check_no_function_keyword() {
     if grep -q '^function ' "$1"; then
         echo "  [ERROR] 'function' keyword used (MUST use name() {} syntax)"
-        return 2
+        return $E_FUNCTION_KEYWORD
     else
         echo "  [OK] No 'function' keyword"
         return 0
@@ -335,7 +415,7 @@ check_no_function_keyword() {
 #   stdout: check result
 #   return[2]{code,desc}:
 #     0,"main() function is defined"
-#     2,"main() function is not defined"
+#     E_NO_MAIN,"main() function is not defined"
 ## CAMUS-END
 check_main_defined() {
     if grep -q '^main()' "$1" || grep -q '^main ()' "$1"; then
@@ -343,7 +423,7 @@ check_main_defined() {
         return 0
     else
         echo "  [ERROR] main() not defined (MUST have a main function)"
-        return 2
+        return $E_NO_MAIN
     fi
 }
 
@@ -355,7 +435,7 @@ check_main_defined() {
 #   stdout: check result
 #   return[2]{code,desc}:
 #     0,"script ends with main \"$@\""
-#     2,"script does not end with main \"$@\""
+#     E_NO_MAIN_CALL,"script does not end with main \"$@\""
 ## CAMUS-END
 check_main_call() {
     if tail -1 "$1" | grep -q '^main "\$@"$' 2>/dev/null; then
@@ -366,7 +446,7 @@ check_main_call() {
         return 0
     else
         echo "  [ERROR] main \"\$@\" not found (MUST invoke main at end)"
-        return 2
+        return $E_NO_MAIN_CALL
     fi
 }
 
@@ -378,7 +458,7 @@ check_main_call() {
 #   stdout: check result
 #   return[2]{code,desc}:
 #     0,"no executable code outside function definitions"
-#     2,"executable statements found at top level"
+#     E_TOP_LEVEL_CODE,"executable statements found at top level"
 ## CAMUS-END
 check_top_level_code() {
     local first_func_line
@@ -391,7 +471,7 @@ check_top_level_code() {
             | grep -v '^## CAMUS-' | grep -v '^## CAMUS-END$' || true)
         if [ -n "$suspect" ]; then
             echo "  [ERROR] Top-level executable code found before first function"
-            return 2
+            return $E_TOP_LEVEL_CODE
         fi
     fi
     echo "  [OK] No top-level executable code"
@@ -432,7 +512,7 @@ check_sl_blocks_present() {
         echo "  [OK] All functions preceded by CAMUS-SL blocks"
         return 0
     fi
-    return 2
+    return $E_NO_SL_BLOCK
 }
 
 ## CAMUS-SL
@@ -470,7 +550,7 @@ check_sl_intent() {
         echo "  [OK] All CAMUS-SL blocks declare intent:"
         return 0
     fi
-    return 2
+    return $E_NO_INTENT
 }
 
 ## CAMUS-SL
@@ -493,7 +573,7 @@ check_blocks_closed() {
         return 0
     else
         echo "  [ERROR] ${open_blocks} opening markers but ${total_end} closing markers"
-        return 2
+        return $E_UNCLOSED_BLOCK
     fi
 }
 
@@ -544,8 +624,8 @@ scan_func_lengths() {
 #   stdout: check result per oversized function
 #   return[3]{code,desc}:
 #     0,"all functions within size limits"
-#     1,"at least one function exceeds SHOULD limit of 20 lines"
-#     2,"at least one function exceeds MUST limit of 50 lines"
+#     W_FUNC_SHOULD,"at least one function exceeds SHOULD limit of 20 lines"
+#     E_FUNC_EXCEEDS_LIMIT,"at least one function exceeds MUST limit of 50 lines"
 ## CAMUS-END
 check_function_lengths() {
     local file="$1"
@@ -559,12 +639,12 @@ check_function_lengths() {
         local func_count="${result##*:}"
         report_func_length "$func_name" "$func_count"
         local rc=$?
-        [ "$rc" -eq 2 ] && errors=$((errors + 1))
-        [ "$rc" -eq 1 ] && warnings=$((warnings + 1))
+        [ "$rc" -eq $E_FUNC_EXCEEDS_LIMIT ] && errors=$((errors + 1))
+        [ "$rc" -eq $W_FUNC_SHOULD ] && warnings=$((warnings + 1))
     done <<< "$results"
 
-    [ "$errors" -gt 0 ] && return 2
-    [ "$warnings" -gt 0 ] && return 1
+    [ "$errors" -gt 0 ] && return $E_FUNC_EXCEEDS_LIMIT
+    [ "$warnings" -gt 0 ] && return $W_FUNC_SHOULD
     return 0
 }
 
@@ -577,17 +657,17 @@ check_function_lengths() {
 #   stdout: warning or error message if over limit
 #   return[3]{code,desc}:
 #     0,"function is within size limits"
-#     1,"function exceeds SHOULD limit of 20 lines"
-#     2,"function exceeds MUST limit of 50 lines"
+#     W_FUNC_SHOULD,"function exceeds SHOULD limit of 20 lines"
+#     E_FUNC_EXCEEDS_LIMIT,"function exceeds MUST limit of 50 lines"
 ## CAMUS-END
 report_func_length() {
     local name="$1" count="$2"
     if [ "$count" -gt 50 ]; then
         echo "  [ERROR] Function '${name}' is ${count} lines (MUST <= 50)"
-        return 2
+        return $E_FUNC_EXCEEDS_LIMIT
     elif [ "$count" -gt 20 ]; then
         echo "  [WARN] Function '${name}' is ${count} lines (SHOULD <= 20)"
-        return 1
+        return $W_FUNC_SHOULD
     fi
     return 0
 }
@@ -598,9 +678,10 @@ report_func_length() {
 #   $1,file path
 # output:
 #   stdout: check results
-#   return[2]{code,desc}:
+#   return[3]{code,desc}:
 #     0,"all lines within length limits"
-#     1,"at least one line exceeds length limits"
+#     W_LINE_SHOULD,"at least one line exceeds SHOULD limit of 80 characters"
+#     E_LINE_EXCEEDS_LIMIT,"at least one line exceeds MUST limit of 120 characters"
 ## CAMUS-END
 check_line_lengths() {
     local file="$1"
@@ -615,11 +696,11 @@ check_line_lengths() {
             long_lines=$((long_lines + 1))
         fi
     done < "$file"
-    if [ "$very_long_lines" -gt 0 ]; then return 2; fi
+    if [ "$very_long_lines" -gt 0 ]; then return $E_LINE_EXCEEDS_LIMIT; fi
     if [ "$long_lines" -eq 0 ]; then
         echo "  [OK] All lines under 80 characters"
     fi
-    [ "$long_lines" -gt 0 ] && return 1
+    [ "$long_lines" -gt 0 ] && return $W_LINE_SHOULD
     return 0
 }
 
@@ -728,8 +809,8 @@ do_gen_key() {
 #   stdout: compliance report
 #   return[3]{code,desc}:
 #     0,"file passes all checks"
-#     1,"all MUST checks pass, at least one SHOULD warning"
-#     2,"at least one MUST check fails"
+#     W_COMPLIANCE_ONLY,"all MUST checks pass, at least one SHOULD warning"
+#     E_CHECK_FAILED,"at least one MUST check fails"
 ## CAMUS-END
 do_check() {
     local file="$1"
@@ -737,7 +818,7 @@ do_check() {
 
     if [ ! -f "$file" ]; then
         echo "Error: file not found: ${file}" >&2
-        return 2
+        return $E_FILE_NOT_FOUND
     fi
 
     echo "Checking: ${file}"
@@ -749,7 +830,8 @@ do_check() {
         check_blocks_closed; do
         $check "$file"
         rc=$?
-        [ "$rc" -eq 2 ] && errors=$((errors + 1))
+        [ "$rc" -ge 100 ] && errors=$((errors + 1))
+        [ "$rc" -ge 50 ] && [ "$rc" -le 99 ] && warnings=$((warnings + 1))
     done
 
     local fl_result; fl_result=$(check_function_lengths "$file"); rc=$?
@@ -765,13 +847,13 @@ do_check() {
     echo ""
     if [ "$errors" -gt 0 ] && [ "$warnings" -gt 0 ]; then
         echo "Result: ${errors} error(s), ${warnings} warning(s)"
-        return 2
+        return $E_CHECK_FAILED
     elif [ "$errors" -gt 0 ]; then
         echo "Result: ${errors} error(s)"
-        return 2
+        return $E_CHECK_FAILED
     elif [ "$warnings" -gt 0 ]; then
         echo "Result: ${warnings} warning(s)"
-        return 1
+        return $W_COMPLIANCE_ONLY
     else
         echo "Result: All checks passed"
         return 0
@@ -858,11 +940,11 @@ is_function_signed_by_me() {
         [ -z "$line" ] && { check_line=$((check_line + 1)); continue; }
         break
     done
-    [ "$check_line" -gt "$total_lines" ] && return 1
-    echo "$line" | grep -q '^## CAMUS-SIGNATURE$' || return 1
+    [ "$check_line" -gt "$total_lines" ] && return $I_FALSE
+    echo "$line" | grep -q '^## CAMUS-SIGNATURE$' || return $I_FALSE
 
     local sig_data
-    sig_data=$(extract_func_sig_data "$file" "$check_line") || return 1
+    sig_data=$(extract_func_sig_data "$file" "$check_line") || return $I_FALSE
     local stored_fpr stored_signatory
     stored_fpr=$(echo "$sig_data" | cut -d'|' -f2)
     stored_signatory=$(echo "$sig_data" | cut -d'|' -f4)
@@ -1262,7 +1344,7 @@ sign_one_function() {
 #   stdout: "content_file sig_block_file sig_b64 fpr date" (tab-separated)
 #   return[2]{code,desc}:
 #     0,"signature information extracted successfully"
-#     1,"malformed or missing signature block"
+#     E_MALFORMED_SIG,"malformed or missing signature block"
 ## CAMUS-END
 extract_whole_sig_info() {
     local file="$1" sig_line="$2" file_type="$3"
@@ -1289,7 +1371,7 @@ extract_whole_sig_info() {
     if [ -z "$sig_b64" ]; then
         echo "Error: malformed signature block." >&2
         rm -f "$tmp_content" "$tmp_sig_block"
-        return 1
+        return $E_MALFORMED_SIG
     fi
 
     echo "${tmp_content} ${tmp_sig_block} ${sig_b64} ${stored_fpr} ${stored_date}"
@@ -1303,9 +1385,10 @@ extract_whole_sig_info() {
 #   $3,key directory for auto-detection
 # output:
 #   stdout: resolved public key path
-#   return[2]{code,desc}:
+#   return[3]{code,desc}:
 #     0,"public key resolved successfully"
-#     1,"could not locate a matching public key"
+#     I_FALSE,"no matching public key found"
+#     E_FILE_NOT_FOUND,"explicit key path does not exist"
 ## CAMUS-END
 resolve_pubkey() {
     local stored_fpr="$1" pubkey="$2" key_dir="$3"
@@ -1313,11 +1396,11 @@ resolve_pubkey() {
         pubkey=$(find_key_by_fingerprint "$stored_fpr" "$key_dir" || true)
         if [ -z "$pubkey" ]; then
             echo "Error: no public key found for fingerprint" >&2
-            return 1
+            return $I_FALSE
         fi
     elif [ ! -f "$pubkey" ]; then
         echo "Error: public key not found: ${pubkey}" >&2
-        return 1
+        return $E_FILE_NOT_FOUND
     fi
     echo "$pubkey"
 }
@@ -1331,7 +1414,7 @@ resolve_pubkey() {
 #   stdout: path to temp file with raw public key
 #   return[2]{code,desc}:
 #     0,"public key prepared for verification"
-#     1,"key was already expired at signature date"
+#     E_KEY_INVALID_AT_DATE,"key was already expired at signature date"
 ## CAMUS-END
 prepare_pubkey() {
     local pubkey="$1" sig_date="$2"
@@ -1346,7 +1429,7 @@ prepare_pubkey() {
             echo "FAIL -- key was already expired at signature date." >&2
             echo "  Key valid until: ${cert_end}" >&2
             rm -f "$tmp_pubkey"
-            return 1
+            return $E_KEY_INVALID_AT_DATE
         fi
         openssl x509 -in "$pubkey" -noout -pubkey > "$tmp_pubkey" 2>/dev/null
     else
@@ -1362,6 +1445,13 @@ prepare_pubkey() {
 #   $2,"public key path (optional, auto-detect by fingerprint if omitted)"
 #   $3,key directory (for auto-detection)
 #   $4,"file type (txt or md, for signature offset calculation)"
+# output:
+#   return[5]{code,desc}:
+#     E_NO_SIGNATURE,"no signature found in file"
+#     *,"propagated from extract_whole_sig_info"
+#     *,"propagated from resolve_pubkey"
+#     *,"propagated from prepare_pubkey"
+#     *,"propagated from verify_sig_against_content"
 ## CAMUS-END
 do_verify_whole_file() {
     local file="$1" pubkey="${2:-}" key_dir="$3" file_type="$4"
@@ -1371,11 +1461,11 @@ do_verify_whole_file() {
         | tail -1 | cut -d: -f1 || true)
 
     if [ -z "$sig_line" ]; then
-        echo "Error: no signature found in file." >&2; return 1
+        echo "Error: no signature found in file." >&2; return $E_NO_SIGNATURE
     fi
 
     local sig_info tmp_content tmp_sig_block sig_b64 stored_fpr stored_date
-    sig_info=$(extract_whole_sig_info "$file" "$sig_line" "$file_type") || return 1
+    sig_info=$(extract_whole_sig_info "$file" "$sig_line" "$file_type") || return $?
 
     tmp_content=$(echo "$sig_info" | cut -d' ' -f1)
     tmp_sig_block=$(echo "$sig_info" | cut -d' ' -f2)
@@ -1384,12 +1474,12 @@ do_verify_whole_file() {
     stored_date=$(echo "$sig_info" | cut -d' ' -f5)
 
     pubkey=$(resolve_pubkey "$stored_fpr" "$pubkey" "$key_dir") || {
-        rm -f "$tmp_content" "$tmp_sig_block"; return 1
+        rm -f "$tmp_content" "$tmp_sig_block"; return $?
     }
 
     local tmp_pubkey
     tmp_pubkey=$(prepare_pubkey "$pubkey" "$stored_date") || {
-        rm -f "$tmp_content" "$tmp_sig_block"; return 1
+        rm -f "$tmp_content" "$tmp_sig_block"; return $?
     }
 
     verify_sig_against_content \
@@ -1412,7 +1502,7 @@ do_verify_whole_file() {
 #   stdout: verification result
 #   return[2]{code,desc}:
 #     0,"signature matches content"
-#     1,"signature does not match content"
+#     E_INVALID_SIG,"signature does not match content"
 ## CAMUS-END
 verify_sig_against_content() {
     local tmp_content="$1" sig_b64="$2" tmp_pubkey="$3"
@@ -1433,7 +1523,7 @@ verify_sig_against_content() {
     else
         echo "FAIL -- invalid signature or wrong public key." >&2
         rm -f "$tmp_sig_bin"
-        return 1
+        return $E_INVALID_SIG
     fi
 }
 
@@ -1471,6 +1561,9 @@ find_func_def_for_sig() {
 #   $2,line number of the CAMUS-SIGNATURE block
 # output:
 #   stdout: "sig_b64 fpr date signatory" (tab-separated) or empty on failure
+#   return[2]{code,desc}:
+#     0,"signature data extracted"
+#     E_MALFORMED_SIG,"malformed signature block"
 ## CAMUS-END
 extract_func_sig_data() {
     local file="$1" sig_line="$2"
@@ -1490,7 +1583,7 @@ extract_func_sig_data() {
 
     if [ -z "$sig_b64" ]; then
         echo "Error: malformed signature block at line ${sig_line}" >&2
-        return 1
+        return $E_MALFORMED_SIG
     fi
 
     echo "${sig_b64}|${stored_fpr}|${stored_date}|${signatory}"
@@ -1536,12 +1629,18 @@ reconstruct_signed_content() {
 #   $1,file path
 #   $2,line number of the CAMUS-SIGNATURE block
 #   $3,public key path
+# output:
+#   return[4]{code,desc}:
+#     E_NO_FUNC_DEF_FOR_SIG,"could not find function definition for signature"
+#     *,"propagated from extract_func_sig_data"
+#     *,"propagated from prepare_pubkey"
+#     *,"propagated from verify_sig_against_content"
 ## CAMUS-END
 verify_func_signature() {
     local file="$1" sig_line="$2" pubkey="$3"
 
     local sig_data
-    sig_data=$(extract_func_sig_data "$file" "$sig_line") || return 1
+    sig_data=$(extract_func_sig_data "$file" "$sig_line") || return $?
 
     local sig_b64 stored_fpr stored_date signatory
     sig_b64=$(echo "$sig_data" | cut -d'|' -f1)
@@ -1550,14 +1649,14 @@ verify_func_signature() {
     signatory=$(echo "$sig_data" | cut -d'|' -f4)
 
     local tmp_pubkey
-    tmp_pubkey=$(prepare_pubkey "$pubkey" "$stored_date") || return 1
+    tmp_pubkey=$(prepare_pubkey "$pubkey" "$stored_date") || return $?
 
     local func_def_line
     func_def_line=$(find_func_def_for_sig "$file" "$sig_line")
 
     if [ "$func_def_line" -eq 0 ]; then
         echo "Error: could not find function definition for signature" >&2
-        rm -f "$tmp_pubkey"; return 1
+        rm -f "$tmp_pubkey"; return $E_NO_FUNC_DEF_FOR_SIG
     fi
 
     local signed_content
@@ -1583,12 +1682,16 @@ verify_func_signature() {
 #   $1,file path
 #   $2,public key path (optional)
 #   $3,key directory (for auto-detection)
+# output:
+#   return[2]{code,desc}:
+#     E_FILE_NOT_FOUND,"file does not exist"
+#     *,"propagated from do_verify_whole_file or verify_per_function_sigs"
 ## CAMUS-END
 do_verify() {
     local file="$1" pubkey="${2:-}" key_dir="$3"
 
     if [ ! -f "$file" ]; then
-        echo "Error: file not found: ${file}" >&2; return 1
+        echo "Error: file not found: ${file}" >&2; return $E_FILE_NOT_FOUND
     fi
 
     local file_type
@@ -1608,6 +1711,10 @@ do_verify() {
 # input[2]{param,desc}:
 #   $1,file path
 #   $2,public key path (optional)
+# output:
+#   return[2]{code,desc}:
+#     E_NO_SIGNATURE,"no CAMUS-SIGNATURE blocks found in file"
+#     *,"propagated from verify_func_signature"
 ## CAMUS-END
 verify_per_function_sigs() {
     local file="$1" pubkey="$2"
@@ -1615,7 +1722,7 @@ verify_per_function_sigs() {
     local sig_blocks
     sig_blocks=$(grep -n '^## CAMUS-SIGNATURE$' "$file" 2>/dev/null || true)
     if [ -z "$sig_blocks" ]; then
-        echo "No signatures found in ${file}" >&2; return 1
+        echo "No signatures found in ${file}" >&2; return $E_NO_SIGNATURE
     fi
 
     local total=0 valid=0 invalid=0
@@ -1646,13 +1753,17 @@ verify_per_function_sigs() {
 #   $5,signatory
 #   $6,force file type (empty for auto-detect)
 #   $7,key directory
+# output:
+#   return[2]{code,desc}:
+#     E_FILE_NOT_FOUND,"file does not exist"
+#     *,"propagated from sub-functions"
 ## CAMUS-END
 do_sign_file() {
     local file="$1" privkey="$2" pubkey="$3" password="$4" signatory="$5"
     local force_type="${6:-}" key_dir="$7"
 
     if [ ! -f "$file" ]; then
-        echo "Error: file not found: ${file}" >&2; return 1
+        echo "Error: file not found: ${file}" >&2; return $E_FILE_NOT_FOUND
     fi
 
     if is_signed "$file" && [ -z "$force_type" ]; then
@@ -1697,7 +1808,7 @@ check_key_expiry() {
     local key_remaining
     key_remaining=$(key_expiry_info "$pubkey") || {
         echo -e "\033[31mError: key expired $((-key_remaining)) day(s) ago.\033[0m" >&2
-        return 6
+        return $E_KEY_EXPIRED
     }
     echo "$key_remaining"
 }
@@ -1712,8 +1823,8 @@ check_key_expiry() {
 # output:
 #   return[3]{code,desc}:
 #     0,"at least one element was approved for signing"
-#     1,"no signable files found in the provided paths"
-#     2,"no elements were approved during interactive review"
+#     E_NO_SIGNABLES,"no signable files found in the provided paths"
+#     E_NO_APPROVALS,"no elements were approved during interactive review"
 ## CAMUS-END
 collect_signables_interactive() {
     local outfile="$1" signatory="$2" fingerprint="$3"; shift 3
@@ -1732,7 +1843,7 @@ collect_signables_interactive() {
         all_elements+=("$elem")
     done < <(collect_signables "$@")
 
-    [ ${#all_elements[@]} -eq 0 ] && { echo "No signable files found." >&2; return 1; }
+    [ ${#all_elements[@]} -eq 0 ] && { echo "No signable files found." >&2; return $E_NO_SIGNABLES; }
 
     local total=${#all_elements[@]}
     for ((i = 0; i < total; i++)); do
@@ -1746,7 +1857,7 @@ collect_signables_interactive() {
             2) break ;;
         esac
     done
-    [ ! -s "$outfile" ] && { echo "No elements approved for signing." >&2; return 2; }
+    [ ! -s "$outfile" ] && { echo "No elements approved for signing." >&2; return $E_NO_APPROVALS; }
     return 0
 }
 
@@ -1842,7 +1953,11 @@ collect_signables() {
 #   $6,element index (1-based)
 #   $7,total elements
 # output:
-#   return: 0 approved, 1 refused, 2 interrupt
+#   return[4]{code,desc}:
+#     0,"user approved the element"
+#     E_FILE_NOT_FOUND,"file does not exist"
+#     1,"user refused the element"
+#     2,"user interrupted the review"
 ## CAMUS-END
 review_element() {
     local elem_type="$1" file="$2" start="$3" end="$4" name="$5" idx="$6" total="$7"
@@ -1851,7 +1966,7 @@ review_element() {
 
     if [ ! -f "$file" ]; then
         echo "[${idx}/${total}] Not found: ${file}" >&2
-        return 1
+        return $E_FILE_NOT_FOUND
     fi
 
     echo "[${idx}/${total}] --- ${file}" >&2
@@ -1963,7 +2078,7 @@ sig_belongs_to_signed() {
         [ "$((line_num - 2))" -eq "$end" ] && return 0
         [ "$((line_num - 3))" -eq "$end" ] && return 0
     done
-    return 1
+    return $I_FALSE
 }
 
 ## CAMUS-SL
@@ -2047,8 +2162,7 @@ cmd_init() {
             --key-dir) shift; key_dir="$1" ;;
             --days) shift; days="$1" ;;
             *)
-                echo "Error: unknown option: $1" >&2
-                usage; exit 1
+                die_unknown_option "$1"
                 ;;
         esac
         shift
@@ -2060,7 +2174,7 @@ cmd_init() {
 # intent: handle the check subcommand
 ## CAMUS-END
 cmd_check() {
-    [ $# -ge 1 ] || { usage; exit 1; }
+    [ $# -ge 1 ] || die_missing_arg
     do_check "$1"
 }
 
@@ -2097,16 +2211,16 @@ cmd_sign() {
             *) break ;;
         esac
     done
-    [ $# -lt 1 ] && { usage; exit 1; }
+    [ $# -lt 1 ] && die_missing_arg
 
     local privkey="${key_dir}/private.pem" pubkey="${key_dir}/public.pem"
-    [ ! -f "$privkey" ] && { echo "Error: private key not found." >&2; exit 4; }
-    [ ! -f "$pubkey" ] && { echo "Error: public key not found." >&2; exit 4; }
+    [ ! -f "$privkey" ] && { echo "Error: private key not found." >&2; exit $E_KEY_NOT_FOUND; }
+    [ ! -f "$pubkey" ] && { echo "Error: public key not found." >&2; exit $E_KEY_NOT_FOUND; }
 
     local fpr; fpr=$(fingerprint_of "$pubkey")
     [ -z "$signatory" ] && read -r -p "Signatory name: " signatory
-    [ -z "$signatory" ] && { echo "Error: signatory cannot be empty." >&2; exit 5; }
-    local key_remaining; key_remaining=$(check_key_expiry "$pubkey") || exit 6
+    [ -z "$signatory" ] && { echo "Error: signatory cannot be empty." >&2; exit $E_SIGNATORY_EMPTY; }
+    local key_remaining;     key_remaining=$(check_key_expiry "$pubkey") || exit $E_KEY_EXPIRED
 
     local files=()
     while IFS= read -r f; do files+=("$f"); done < <(collect_sign_files "$@")
@@ -2114,7 +2228,7 @@ cmd_sign() {
     for f in "${files[@]}"; do
         [ "$(detect_file_type "$f")" != "sh" ] && continue
         echo "--- Running check on ${f} ---" >&2
-        do_check "$f"; [ $? -eq 2 ] && { echo "Error: check failed. Aborting." >&2; exit 2; }
+        do_check "$f"; [ $? -eq $E_CHECK_FAILED ] && { echo "Error: check failed. Aborting." >&2; exit $E_CHECK_FAILED; }
     done
 
     local temp_approved; temp_approved=$(mktemp)
@@ -2149,7 +2263,7 @@ cmd_verify() {
         esac
         shift
     done
-    [ $# -ge 1 ] || { usage; exit 1; }
+    [ $# -ge 1 ] || die_missing_arg
 
     if [ -z "$pubkey" ]; then
         pubkey="${key_dir}/public.pem"
@@ -2172,8 +2286,7 @@ cmd_list_keys() {
         case "$1" in
             --key-dir) shift; key_dir="$1" ;;
             *)
-                echo "Error: unknown option: $1" >&2
-                usage; exit 1
+                die_unknown_option "$1"
                 ;;
         esac
         shift
@@ -2189,7 +2302,7 @@ cmd_list_keys() {
 main() {
     if [ $# -eq 0 ]; then
         usage
-        exit 1
+        exit $E_MISSING_ARG
     fi
 
     local key_dir cmd
@@ -2208,7 +2321,7 @@ main() {
         *)
             echo "Error: unknown command: $cmd" >&2
             usage
-            exit 1
+            exit $E_UNKNOWN_OPTION
             ;;
     esac
 }
