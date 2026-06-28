@@ -91,6 +91,34 @@ rules, derived from the specification.
 
 - **No `function` keyword** — Use POSIX-compatible syntax only
 - **No top-level code** — All logic inside functions
+- **No bare numeric return codes** — Every `return N` or `exit N` with `N > 0`
+  MUST reference a named `readonly` constant (see Specification §11).
+
+### Error Code Conventions
+
+When writing a Camus.sh script, define error code constants at the top of
+the file, after the `## CAMUS-LEXICON` block:
+
+```sh
+# --- Error code constants ---
+# I_ (0-49): boolean / information
+readonly I_OK=0
+readonly I_FALSE=1
+# W_ (50-99): SHOULD warnings
+readonly W_LEXICON_MISSING=50
+# E_ (100-255): MUST errors
+readonly E_EMPTY_PASSWORD=100
+readonly E_KEY_NOT_FOUND=102
+```
+
+Rules:
+- Constants are declared with `readonly` at the top of the file
+- All `return N` / `exit N` with `N > 0` MUST use a constant
+- Within each range (`I_`, `W_`, `E_`), values MUST be sequential without gaps
+- In CAMUS-SL blocks, reference constants by name (without `$`), e.g.
+  `E_KEY_NOT_FOUND,"key not found in key directory"`
+- Propagated errors use the wildcard `*` in CAMUS-SL blocks:
+  `*,"propagated from prompt_password"`
 
 ### Verifying Grammar
 

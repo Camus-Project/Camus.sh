@@ -79,12 +79,19 @@ This restriction ensures uniform parsing across supported shells.
 
 Executable statements MUST NOT appear at top level.
 
-The only executable statement allowed outside functions is the invocation of the entry point.
+The following are allowed as exceptions:
+
+- invocation of the entry point (`main "$@"`);
+- `readonly` variable declarations (considered declarations, not
+  executable code).
 
 Valid example:
 
 ```sh
 #!/usr/bin/env bash
+
+readonly MY_CONFIG_PATH="$HOME/.config/myapp"
+readonly MY_VERSION=42
 
 main() {
     echo "Hello"
@@ -162,7 +169,8 @@ The following keys are defined:
 - `input[N]{param,desc[,default]}:` — OPTIONAL. Present only if the function takes inputs. Uses TOON table format.
 - `output:` — OPTIONAL. Present only if the function produces output.
 - `return[N]{code,desc}:` — OPTIONAL. Present only if the function returns non-zero
-  exit codes. Uses TOON table format. The `code` field MAY be `*` to indicate that
+  exit codes. Uses TOON table format. The `code` field MUST be the name of a
+  named constant (see §12). The `code` field MAY be `*` to indicate that
   the return code originates from a called function and is propagated forward.
 
 Example with inputs and outputs:
@@ -200,8 +208,8 @@ Example with return codes (wildcard for propagated errors):
 # output:
 #   stdout: the confirmed password
 #   return[2]{code,desc}:
-#     *,"propagated from prompt_password"
-#     3,"passwords do not match"
+#     *,propagated from prompt_password
+#     E_PASSWORDS_MISMATCH,passwords do not match
 ## CAMUS-END
 prompt_password_twice() {
     local p1 p2
@@ -302,7 +310,60 @@ its first prototype — will automate compliance checking against these rules.
 
 ---
 
-## 11. Design Rationale
+## 11. Error Code Constants
+
+All return and exit codes in Camus.sh scripts MUST use named `readonly`
+constants instead of bare numeric values. This convention makes error
+semantics self-documenting and enables systematic auditing.
+
+### 11.1 Range Convention
+
+| Range | Prefix | Category | Description |
+|---|---|---|---|
+| 0–49 | `I_` | Information / boolean | Success indicators, boolean results, UI state codes |
+| 50–99 | `W_` | Warning (SHOULD) | Non-fatal warnings, compliance hints |
+| 100–255 | `E_` | Error (MUST) | Fatal errors, constraint violations |
+
+Code 0 is reserved for success and is bound to the constant `I_OK`.
+
+### 11.2 Rules
+
+1. Every `return N` or `exit N` with `N > 0` MUST reference a named constant.
+2. Constants MUST be declared at the top of the script, after the
+   `## CAMUS-LEXICON` block, using `readonly`.
+3. Constants within a range MUST be assigned sequentially without gaps.
+4. The `readonly` declaration is considered a declaration (not executable
+   code) and is therefore exempt from the top-level code prohibition (§5).
+5. In CAMUS-SL `return[N]{code,desc}:` blocks, the `code` field MUST use
+   the constant name (without `$` prefix). Example:
+   `E_FILE_NOT_FOUND,file not found`.
+6. Propagated return codes (those returned by calling `|| return $?`) use
+   the wildcard code `*` in the CAMUS-SL block:
+   `*,propagated from <function>`.
+
+### 11.3 Implementation Pattern
+
+```sh
+# --- Error code constants ---
+# I_ (0-49): boolean / information
+readonly I_OK=0
+readonly I_FALSE=1
+readonly I_USER_REFUSED=1
+readonly I_USER_INTERRUPTED=2
+# W_ (50-99): SHOULD warnings
+readonly W_LEXICON_MISSING=50
+readonly W_FUNC_SHOULD=51
+readonly W_LINE_SHOULD=52
+readonly W_COMPLIANCE_ONLY=53
+# E_ (100-255): MUST errors
+readonly E_EMPTY_PASSWORD=100
+readonly E_FILE_NOT_FOUND=105
+readonly E_UNREACHABLE=127
+```
+
+---
+
+## 12. Design Rationale
 
 Camus.sh treats functions as units of human responsibility.
 
