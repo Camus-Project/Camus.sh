@@ -15,8 +15,8 @@
 # I_ (0-49): boolean / information
 readonly I_OK=0
 readonly I_FALSE=1
-readonly I_USER_REFUSED=1
-readonly I_USER_INTERRUPTED=2
+readonly I_USER_REFUSED=2
+readonly I_USER_INTERRUPTED=3
 # W_ (50-99): SHOULD warnings
 readonly W_LEXICON_MISSING=50
 readonly W_FUNC_SHOULD=51
