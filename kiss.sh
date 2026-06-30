@@ -173,6 +173,12 @@ prompt_password() {
     fi
     echo "$password"
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-30T11:42:23Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: 2d5JQVWEg0hvfaF/ReexqgT4r97+VK+gHtZgb74iRJZnG9UCD/F091/0/Y8G01l4ayGbt3nLIGwWbzrqmMrvCg==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: prompt the user for a password twice to confirm
@@ -192,6 +198,12 @@ prompt_password_twice() {
     fi
     echo "$p1"
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-30T11:42:23Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: S09k6Jcz+Oopfm1FpifDn2xtAbAzJRmdibAxw6RU5cFjt+zVaUQbWlxDjn98JVsAjPJV/o4R3AKHytv0KfnnBw==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: compute the SHA256 fingerprint of a certificate or public key
@@ -253,6 +265,12 @@ find_key_by_fingerprint() {
     fi
     return $I_FALSE
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-30T11:42:23Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: q8IetGh4dWENFIthQHx4H5sEVSOYgklzJ8uiAduTpG13I9jh4KSU+UkcsJEKYAUgKByrVfzllvI+ZHU048c/Dg==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check certificate expiration status at a given date
@@ -333,6 +351,12 @@ is_signed() {
     local file="$1"
     grep -q '^\*camus-sig-1\*$' "$file"
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-30T11:42:23Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: e5CEYsLGvlFMPu7ljRU/SHurdBvnDTL/YLurvv/I1qrf5xQjuMlXG6/Zl145EMvVJSyViDxBdKCSre0AoIftCg==
+## CAMUS-END
 
 ## --- Check helpers ---
 
@@ -355,6 +379,12 @@ check_shebang() {
         return $E_NO_SHEBANG
     fi
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-30T11:42:23Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: R+0SyPeAyTOOgEiLp0qqwHArlxb4wvenV3rYh8P/++VDxG5BZL1vcW4YfO57v0edjnbjNB7ebIMSSjmE5LslCg==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check that a script has a CAMUS-LEXICON block
@@ -375,6 +405,12 @@ check_lexicon_block() {
         return $W_LEXICON_MISSING
     fi
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-30T11:42:23Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: vBZywZU3UH/iJks+OgnnHlwl5EL545P4L/Apk3RN17sKgQJMxaJPfRF9xl0sxs+0u1UH1bonuwclGy1B4KXiDQ==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check that no 'function' keyword is used
@@ -395,6 +431,12 @@ check_no_function_keyword() {
         return $I_OK
     fi
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-30T11:42:23Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: 863rh+35x7YNyKj+NqV1dMwpAbg/EM+Gk/MvIVz0XJKorfalOm5VmiZhrktplSRf0gu6D6yZoxPo8c/8p/AOCA==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check that main() is defined
@@ -415,6 +457,12 @@ check_main_defined() {
         return $E_NO_MAIN
     fi
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-30T11:42:23Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: nYho5fp8NIqNG4W/m4nDElZ9G5QXIa+5KnOb8ZlA5aN94Zz4RrJzM2yXQPOcNUdZblvF+3AKZdtI9KKhg/6pAQ==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check that the script ends with main "$@"
@@ -438,6 +486,12 @@ check_main_call() {
         return $E_NO_MAIN_CALL
     fi
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-06-30T11:42:23Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: r43hZGxA+iooP986j2V1AhM/1cvKrfOJFKEWQWospf7sgS7JecSQHWV18oFbvhZpvzcTdy5rzAkC0W04CG+mDA==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: check for top-level executable code before first function
