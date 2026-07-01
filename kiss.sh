@@ -222,6 +222,12 @@ fingerprint_of() {
             | openssl dgst -sha256 | cut -d' ' -f2
     fi
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-07-01T11:27:17Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: +xagtgHsC+YM34cRNubJxIgPkEgEaS0kfuHvCk2lMBslOUduGtmirg75mXJ/QuVUJpnPncYTlEvNXEmlp9nLBg==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: normalize a fingerprint string for use as a filename
@@ -283,9 +289,6 @@ cert_valid_at() {
     local cert_end
     cert_end=$(openssl x509 -in "$pubkey" -noout -enddate 2>/dev/null \
         | cut -d= -f2)
-    if [ -z "$cert_end" ]; then
-        return $I_OK
-    fi
     local cert_epoch sig_epoch
     cert_epoch=$(date -d "$cert_end" +%s 2>/dev/null || echo 0)
     sig_epoch=$(date -d "$sig_date" +%s 2>/dev/null || echo 0)
@@ -294,6 +297,12 @@ cert_valid_at() {
     fi
     return $I_FALSE
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-07-01T11:50:29Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: EeVh5G8O0YYJR3P2V943/cblqsNHyol3Fw7Ur73XkkA+KxS2JJ/m49E9ql8qoL1kgwLAAjGPnDrJ2ol/HyeuDA==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: extract remaining validity days of a certificate
@@ -314,6 +323,12 @@ key_expiry_info() {
     echo "$remaining"
     [ "$remaining" -ge 0 ]
 }
+## CAMUS-SIGNATURE
+# signatory: Lan Jing
+# date: 2026-07-01T11:50:29Z
+# fingerprint: sha256:52:69:05:07:66:BD:DE:55:C7:D2:B1:52:9C:8F:ED:7B:05:E3:8E:57:7E:10:98:1E:7C:BD:13:96:85:4E:83:89
+# signature: Zvc9mpHkh//0yiyiH7NVn79hWvrwCriLYf4hlIT1YwNFEpya3DsbMZf4QLEjBnBXHA/iLErXSfevPzOESTsaBA==
+## CAMUS-END
 
 ## CAMUS-SL
 # intent: detect file type for signing mode
